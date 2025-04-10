@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Menu, Cloud } from 'lucide-react';
+import { PricingModal } from '@/components/PricingModal';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -26,6 +27,10 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
             <Cloud className="h-5 w-5 text-primary" />
             <span className="text-lg font-medium tracking-tight">SEO Chat</span>
           </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <PricingModal />
         </div>
       </div>
     </header>
