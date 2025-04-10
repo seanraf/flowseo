@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Settings, Menu, Cloud, Command } from 'lucide-react';
+import { Menu, Cloud } from 'lucide-react';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -26,21 +26,6 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
             <Cloud className="h-5 w-5 text-primary" />
             <span className="text-lg font-medium tracking-tight">SEO Chat</span>
           </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <div className="hidden md:flex items-center justify-center h-8 px-3 rounded-full border border-border/50 bg-background/50 text-sm text-muted-foreground">
-            <Command className="h-3.5 w-3.5 mr-1" />
-            <span>K</span>
-          </div>
-          
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 rounded-full"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
         </div>
       </div>
     </header>

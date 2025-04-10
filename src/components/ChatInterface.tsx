@@ -14,7 +14,7 @@ interface ChatInterfaceProps {
 const welcomeMessage: Message = {
   id: 'welcome',
   role: 'assistant',
-  content: "Hi there! I'm ChatSEO, your AI assistant for SEO research, keyword selection, and content generation. How can I help you today?",
+  content: "Welcome to the SEO Sandbox! I'm your AI assistant for SEO research, keyword selection, and content generation. You can ask me to:\n\n- Research keywords for any topic\n- Generate SEO-optimized content\n- Create meta tags and descriptions\n- Provide general SEO advice and insights\n\nHow can I help you today?",
   timestamp: new Date(),
 };
 

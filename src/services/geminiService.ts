@@ -1,5 +1,5 @@
-
 // Gemini API Service
+import { processKwrdsRequest, KwrdsApiResponse } from './kwrdsService';
 
 const GEMINI_API_KEY = "AIzaSyAUfWWsq_uiZkRNtG-GMFDcj_GveFwGzzQ";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
@@ -34,8 +34,83 @@ interface GeminiResponse {
   }[];
 }
 
+// Helper function to detect SEO-related requests
+const detectSeoRequest = (prompt: string): { isKwrdsRequest: boolean, type: 'keywords' | 'content' | 'metatags' | null, params: any } => {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  // Check for keyword research request
+  if (
+    lowerPrompt.includes('keyword') && 
+    (lowerPrompt.includes('research') || lowerPrompt.includes('suggestions') || lowerPrompt.includes('ideas'))
+  ) {
+    // Extract the main topic
+    let seed = prompt.replace(/keywords|research|suggestions|ideas|for|me|find|get/gi, '').trim();
+    return { isKwrdsRequest: true, type: 'keywords', params: { seed } };
+  }
+  
+  // Check for content generation request
+  else if (
+    lowerPrompt.includes('generate content') || 
+    lowerPrompt.includes('write content') ||
+    lowerPrompt.includes('create content')
+  ) {
+    // Extract topic and keywords
+    const topic = prompt.replace(/generate|write|create|content|for|about|with|keywords/gi, '').trim();
+    const keywords = []; // In a real app, we would extract keywords if provided
+    return { isKwrdsRequest: true, type: 'content', params: { topic, keywords } };
+  }
+  
+  // Check for meta tags generation request
+  else if (
+    lowerPrompt.includes('meta tags') || 
+    lowerPrompt.includes('seo tags') || 
+    lowerPrompt.includes('meta description')
+  ) {
+    const topic = prompt.replace(/meta tags|seo tags|meta description|generate|create|for|about/gi, '').trim();
+    const keywords = []; // In a real app, we would extract keywords if provided
+    return { isKwrdsRequest: true, type: 'metatags', params: { topic, keywords } };
+  }
+  
+  return { isKwrdsRequest: false, type: null, params: null };
+};
+
+// Function to format kwrds.ai API responses
+const formatKwrdsResponse = (response: KwrdsApiResponse): string => {
+  switch (response.type) {
+    case 'keywords':
+      const keywords = response.data as any[];
+      return `## Keyword Suggestions\n\n${keywords.map((k, i) => 
+        `${i+1}. **${k.keyword}**\n   - Score: ${k.score}\n   - Volume: ${k.volume}\n   - Difficulty: ${k.difficulty}\n`
+      ).join('\n')}`;
+    
+    case 'content':
+      return `## Generated Content\n\n${(response.data as any).content}`;
+    
+    case 'metatags':
+      const metaTags = response.data as any;
+      return `## SEO Meta Tags\n\n**Title:** ${metaTags.title}\n\n**Description:** ${metaTags.description}\n\n**Tags:** ${metaTags.tags.join(', ')}`;
+    
+    default:
+      return "Unknown response type";
+  }
+};
+
 export const generateGeminiResponse = async (prompt: string): Promise<string> => {
   try {
+    // First, check if this is an SEO-specific request for kwrds.ai
+    const { isKwrdsRequest, type, params } = detectSeoRequest(prompt);
+    
+    if (isKwrdsRequest && type) {
+      try {
+        const kwrdsResponse = await processKwrdsRequest(type, params);
+        return formatKwrdsResponse(kwrdsResponse);
+      } catch (error) {
+        console.error("Error with kwrds.ai API:", error);
+        // Fall back to Gemini if kwrds.ai fails
+      }
+    }
+    
+    // Otherwise, use Gemini API
     const requestBody: GeminiRequestBody = {
       contents: [
         {

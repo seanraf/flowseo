@@ -3,19 +3,15 @@ import React, { useState } from 'react';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ChatInterface from '@/components/ChatInterface';
-
-const SAMPLE_CONVERSATIONS = [
-  { id: '1', title: 'SEO Strategy for E-commerce', active: true },
-  { id: '2', title: 'Blog Content Ideas', active: false },
-  { id: '3', title: 'Keyword Research for SaaS', active: false },
-  { id: '4', title: 'Content Optimization', active: false },
-  { id: '5', title: 'Meta Descriptions Help', active: false },
-];
+import { useToast } from '@/components/ui/use-toast';
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [conversations, setConversations] = useState(SAMPLE_CONVERSATIONS);
+  const [conversations, setConversations] = useState([
+    { id: '1', title: 'New Sandbox', active: true },
+  ]);
   const [activeConversationId, setActiveConversationId] = useState('1');
+  const { toast } = useToast();
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -34,7 +30,7 @@ const Index = () => {
     const newId = (Math.max(...conversations.map(c => parseInt(c.id))) + 1).toString();
     const newConversation = {
       id: newId,
-      title: `New Conversation ${newId}`,
+      title: `New Sandbox ${newId}`,
       active: true
     };
     
@@ -45,6 +41,38 @@ const Index = () => {
     
     setActiveConversationId(newId);
     setSidebarOpen(false);
+  };
+
+  const handleDeleteConversation = (id: string) => {
+    // Prevent deleting the last conversation
+    if (conversations.length <= 1) {
+      toast({
+        title: "Cannot delete",
+        description: "You need to have at least one sandbox.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const filteredConversations = conversations.filter(conv => conv.id !== id);
+    setConversations(filteredConversations);
+
+    // If we deleted the active conversation, set the first one as active
+    if (id === activeConversationId) {
+      const newActiveId = filteredConversations[0].id;
+      setActiveConversationId(newActiveId);
+      setConversations(filteredConversations.map(conv => ({
+        ...conv,
+        active: conv.id === newActiveId
+      })));
+    } else {
+      setConversations(filteredConversations);
+    }
+
+    toast({
+      title: "Sandbox deleted",
+      description: "Your sandbox has been successfully deleted.",
+    });
   };
 
   return (
@@ -63,6 +91,7 @@ const Index = () => {
         conversations={conversations}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
+        onDeleteConversation={handleDeleteConversation}
       />
       
       {/* Main content */}
