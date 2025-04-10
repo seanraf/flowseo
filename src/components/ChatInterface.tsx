@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import MessageItem, { Message } from './MessageItem';
@@ -6,6 +5,7 @@ import ChatInput from './ChatInput';
 import { generateGeminiResponse } from '@/services/geminiService';
 import { useToast } from '@/components/ui/use-toast';
 import { PricingModal } from './PricingModal';
+import { Button } from '@/components/ui/button';
 
 interface ChatInterfaceProps {
   activeConversationId: string | null;
@@ -142,7 +142,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <p className="text-sm text-muted-foreground">
                   Upgrade to continue using FlowSEO with unlimited messages and multiple projects.
                 </p>
-                <PricingModal />
+                <PricingModal>
+                  <Button variant="default">Upgrade Now</Button>
+                </PricingModal>
               </div>
             </div>
           )}
