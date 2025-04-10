@@ -19,7 +19,7 @@ interface ChatInterfaceProps {
 const welcomeMessage: Message = {
   id: 'welcome',
   role: 'assistant',
-  content: "Welcome to the SEO Sandbox! I'm your AI assistant for SEO research, keyword selection, and content generation. You can ask me to:\n\n- Research keywords for any topic\n- Generate SEO-optimized content\n- Create meta tags and descriptions\n- Provide general SEO advice and insights\n\nHow can I help you today?",
+  content: "Welcome to FlowSEO! I'm your AI assistant for SEO research, keyword selection, and content generation. You can ask me to:\n\n- Research keywords for any topic\n- Generate SEO-optimized content\n- Create meta tags and descriptions\n- Provide general SEO advice and insights\n\nHow can I help you today?",
   timestamp: new Date(),
 };
 
@@ -105,7 +105,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <span className="font-semibold">{messageCount}</span> of <span className="font-semibold">10</span> free messages used
           </div>
           <div className="flex items-center gap-2">
-            <PricingModal />
+            <PricingModal>
+              <Button variant="default">Upgrade Now</Button>
+            </PricingModal>
           </div>
         </div>
       )}
@@ -138,7 +140,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <div className="text-center space-y-4">
                 <h3 className="text-base font-medium">You've reached the free plan limit</h3>
                 <p className="text-sm text-muted-foreground">
-                  Upgrade to continue using SEO Chat with unlimited messages and multiple projects.
+                  Upgrade to continue using FlowSEO with unlimited messages and multiple projects.
                 </p>
                 <PricingModal />
               </div>
@@ -150,7 +152,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <ChatInput 
         onSendMessage={handleSendMessage}
         isLoading={isLoading}
-        disabled={messageLimitReached}
       />
     </div>
   );
