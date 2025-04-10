@@ -53,7 +53,7 @@ const Index = () => {
     if (conversations.length >= 1 && !isUnlimitedMode) {
       toast({
         title: "Free Plan Limit Reached",
-        description: "Upgrade to create more than 1 sandbox. Use the Pricing button to see plan options.",
+        description: "Upgrade to create more than 1 sandbox. Use the Upgrade button to see plan options.",
         variant: "destructive",
       });
       return;
@@ -107,6 +107,15 @@ const Index = () => {
     });
   };
 
+  const handleRenameConversation = (id: string, newTitle: string) => {
+    setConversations(conversations.map(conv => {
+      if (conv.id === id) {
+        return { ...conv, title: newTitle };
+      }
+      return conv;
+    }));
+  };
+
   // This function will be passed to ChatInterface to track message count
   const incrementMessageCount = () => {
     if (!isUnlimitedMode) {
@@ -140,11 +149,12 @@ const Index = () => {
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
         onDeleteConversation={handleDeleteConversation}
+        onRenameConversation={handleRenameConversation}
       />
       
       {/* Main content */}
       <div className="flex flex-1 flex-col md:ml-[280px]">
-        <Header toggleSidebar={toggleSidebar} />
+        <Header toggleSidebar={toggleSidebar} activeConversationTitle={conversations.find(conv => conv.active)?.title || null} />
         <main className="flex-1 overflow-hidden">
           <ChatInterface 
             activeConversationId={activeConversationId} 

@@ -6,7 +6,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/components/ui/use-toast';
 import { CheckCircle2, XCircle } from 'lucide-react';
 
-export const PricingModal = () => {
+interface PricingModalProps {
+  children: React.ReactNode;
+}
+
+export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
   const [open, setOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'limited' | 'unlimited' | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -36,7 +40,7 @@ export const PricingModal = () => {
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="default">Pricing</Button>
+          {children}
         </DialogTrigger>
         <DialogContent className="sm:max-w-3xl">
           <div className="space-y-4 py-2 pb-4">

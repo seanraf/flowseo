@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Bot, User, Copy, Check } from 'lucide-react';
@@ -43,6 +42,18 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, isLast }) => {
     }, 2000);
   };
 
+  const renderContent = (content: string) => {
+    const parts = content.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        const text = part.slice(2, -2);
+        return <strong key={index}>{text}</strong>;
+      } else {
+        return part;
+      }
+    });
+  };
+
   return (
     <div 
       ref={messageRef}
@@ -65,7 +76,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, isLast }) => {
         <div className="min-w-0 flex-1 space-y-2">
           <div className="prose prose-sm break-words dark:prose-invert prose-p:leading-relaxed prose-pre:p-0">
             {message.content.split('\n').map((line, i) => (
-              <p key={i}>{line || '\u00A0'}</p>
+              <p key={i}>{renderContent(line) || '\u00A0'}</p>
             ))}
           </div>
           

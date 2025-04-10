@@ -13,7 +13,7 @@ interface ChatInputProps {
 const ChatInput: React.FC<ChatInputProps> = ({ 
   onSendMessage, 
   isLoading,
-  placeholder = "Message ChatSEO..."
+  placeholder = "Let's flow..."
 }) => {
   const [message, setMessage] = useState<string>('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -70,7 +70,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           </Button>
         </div>
         <div className="mt-2 text-center text-xs text-muted-foreground">
-          <span>ChatSEO helps with SEO research, keywords, and content generation</span>
+          <span>FlowSEO helps with SEO research, keywords, and content generation</span>
         </div>
       </form>
     </div>
