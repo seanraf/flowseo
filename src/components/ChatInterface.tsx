@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import MessageItem, { Message } from './MessageItem';
 import ChatInput from './ChatInput';
+import { generateGeminiResponse } from '@/services/geminiService';
+import { useToast } from '@/components/ui/use-toast';
 
 interface ChatInterfaceProps {
   activeConversationId: string | null;
@@ -19,6 +21,7 @@ const welcomeMessage: Message = {
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ activeConversationId }) => {
   const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   // Reset messages when conversation changes
   useEffect(() => {
@@ -41,24 +44,28 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ activeConversationId }) =
     // Add user message to chat
     setMessages((prev) => [...prev, userMessage]);
     
-    // Simulate AI response
+    // Get AI response
     setIsLoading(true);
     
     try {
-      // In a real app, we would call the OpenAI API here
-      // For demo purposes, we'll simulate a delay and a fixed response
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Call Gemini API for response
+      const response = await generateGeminiResponse(content);
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `I'll help you research and analyze "${content}" from an SEO perspective. This would be where the AI response with keyword information and content suggestions would appear.`,
+        content: response,
         timestamp: new Date(),
       };
       
       setMessages((prev) => [...prev, aiMessage]);
     } catch (error) {
       console.error('Error getting AI response:', error);
+      toast({
+        title: "Error",
+        description: "Failed to get a response. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
