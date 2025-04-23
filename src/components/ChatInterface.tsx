@@ -32,7 +32,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   messageLimitReached = false,
 }) => {
   const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Keep for general loading state if needed elsewhere
+  const [isTyping, setIsTyping] = useState(false); // State for typing indicator
   const [threadId, setThreadId] = useState<string | null>(null); // State for thread ID
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null); // Ref for scrolling
@@ -87,12 +88,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Effect to scroll down when messages change
   useEffect(() => {
     if (scrollAreaRef.current) {
-      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollElement) {
-        scrollElement.scrollTop = scrollElement.scrollHeight;
+      const viewport = scrollAreaRef.current.querySelector<HTMLDivElement>('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        // Use smooth scrolling
+        viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
       }
     }
-  }, [messages]);
+  }, [messages]); // Trigger scroll on new message
 
   const handleSendMessage = async (content: string) => {
     // Check if user has reached message limit
@@ -124,6 +126,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     
     // Add user message to chat
     setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true); // Keep general loading if needed
+    setIsTyping(true); // Start typing indicator
     
     // Increment message count in parent component
     if (onSendMessage) {
@@ -131,7 +135,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
     
     // Get AI response via stream
-    setIsLoading(true);
     const assistantMessageId = `assistant-${Date.now()}`;
     // Add a placeholder for the assistant message
     setMessages((prev) => [
@@ -144,80 +147,151 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       },
     ]);
 
+    // --- Robust Stream Processing Logic --- 
+    let accumulatedText = '';
+    let currentEventType: string | null = null;
+
     try {
       const stream = await runAssistantStream(threadId, content);
       const reader = stream.getReader();
       const decoder = new TextDecoder();
-      let streamedContent = '';
 
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const { value, done } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value, { stream: true });
-        
-        // Assuming the stream provides JSON chunks like { "event": "...", "data": ... }
-        // Adjust parsing based on actual stream format from LangGraph
-        try {
-            // Split potential multiple JSON objects in a single chunk
-            const jsonObjects = chunk.match(/\{.*?\}\s*/g);
-            if (jsonObjects) {
-                jsonObjects.forEach(jsonString => {
-                    if (jsonString.trim()) {
-                        const parsed = JSON.parse(jsonString.trim());
-                        // Look for the actual message content within the streamed data
-                        // This structure depends heavily on how LangGraph Cloud streams responses.
-                        // Common patterns include checking event types ('on_chat_model_stream', 'on_tool_end', etc.)
-                        // and extracting content from 'data.chunk.content' or similar paths.
-                        // --- START EXAMPLE PARSING LOGIC (NEEDS ADJUSTMENT) ---
-                        if (parsed.event === 'on_chat_model_stream' && parsed.data?.chunk?.content) {
-                            streamedContent += parsed.data.chunk.content;
-                        } else if (parsed.event === 'on_llm_end' && parsed.data?.output?.content) {
-                             // Sometimes final output comes in a different event
-                             // streamedContent = parsed.data.output.content; // Overwrite if needed
-                        }
-                        // --- END EXAMPLE PARSING LOGIC ---
-
-                        // Update the last message (assistant's placeholder) with new content
-                        setMessages((prev) =>
-                          prev.map((msg) =>
-                            msg.id === assistantMessageId
-                              ? { ...msg, content: streamedContent }
-                              : msg
-                          )
-                        );
-                    }
-                });
-            }
-        } catch (parseError) {
-          console.warn("Failed to parse stream chunk:", chunk, parseError);
-          // Fallback: Append raw chunk if JSON parsing fails? Or handle specific error types.
-          // streamedContent += chunk; // Less ideal, might show raw JSON
+        if (done) {
+          setIsTyping(false); // Stop typing when stream ends
+          // Process any remaining text? Unlikely needed if stream terminates correctly.
+          if (accumulatedText.trim()) {
+            console.warn("Stream ended with unprocessed text:", accumulatedText);
+          }
+          break;
         }
-      }
 
-      // Final update in case the last chunk didn't trigger an update
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantMessageId
-            ? { ...msg, content: streamedContent || "..." } // Use ellipsis if empty
-            : msg
-        )
-      );
+        const chunk = decoder.decode(value, { stream: true });
+        console.log("Raw Chunk:", chunk); // DEBUG LOG
+        accumulatedText += chunk;
 
+        // Process complete messages separated by \n\n
+
+        let messageEndIndex;
+        while ((messageEndIndex = accumulatedText.indexOf('\n\n')) !== -1) {
+          const messageText = accumulatedText.substring(0, messageEndIndex);
+          accumulatedText = accumulatedText.substring(messageEndIndex + 2); // Remove message + \n\n
+
+          let eventTypeForMessage = 'message'; // Default
+          let dataPayload = '';
+
+          const lines = messageText.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              eventTypeForMessage = line.slice(6).trim();
+              currentEventType = eventTypeForMessage; // Store the most recent event type
+              console.log("SSE Event:", currentEventType); // DEBUG LOG
+            } else if (line.startsWith('data: ')) {
+              dataPayload += line.slice(5); // Append data content
+            } 
+            // Ignore comment lines (starting with ':') and empty lines within the message block
+          }
+
+          if (dataPayload) {
+            console.log("Processing data payload for event", currentEventType, ":", dataPayload); // DEBUG LOG
+            try {
+              const parsedData = JSON.parse(dataPayload);
+              console.log("Parsed Data:", parsedData); // DEBUG LOG
+
+              // --- Extraction & State Update Logic ---
+              let latestAiContent: string | null = null;
+
+              if (currentEventType === 'values' && Array.isArray(parsedData?.messages)) {
+                const messagesArray = parsedData.messages;
+                if (messagesArray.length > 0) {
+                  const lastMessage = messagesArray[messagesArray.length - 1];
+
+                  // 1. AI message with text content
+                  if (lastMessage?.type === 'ai' && typeof lastMessage.content === 'string') {
+                    latestAiContent = lastMessage.content;
+                    console.log("Extracted AI Content from 'values':", latestAiContent); // DEBUG LOG
+                  
+                  // 2. Tool message with string content (likely JSON results)
+                  } else if (lastMessage?.type === 'tool' && typeof lastMessage.content === 'string') {
+                    try {
+                      const toolData = JSON.parse(lastMessage.content);
+                      // Format keyword results nicely
+                      if (Array.isArray(toolData) && toolData[0]?.keyword) {
+                        const formattedKeywords = toolData.slice(0, 10).map((kw: any) => 
+                          `- ${kw.keyword} (Vol: ${kw.volume}, CPC: ${kw.cpc?.toFixed(2)}, Comp: ${kw.competition})`
+                        ).join('\n');
+                        latestAiContent = `Keyword Research Results for "${toolData[0]?.search_question || 'query'}":\n\n${formattedKeywords}${toolData.length > 10 ? '\n...' : ''}`;
+                      } else {
+                        // Generic JSON formatting for other tool results
+                        latestAiContent = `Tool Result:\n\`\`\`json\n${JSON.stringify(toolData, null, 2)}\n\`\`\``;
+                      }
+                    } catch (toolParseError) {
+                      // Fallback for non-JSON tool results or parse errors
+                      latestAiContent = `Tool Result (raw):\n${lastMessage.content}`;
+                      console.warn("Could not parse tool result JSON:", toolParseError);
+                    }
+                    console.log("Extracted Tool Content from 'values':", latestAiContent); // DEBUG LOG
+                  
+                  // 3. AI message initiating a tool call (content is an array with functionCall)
+                  } else if (lastMessage?.type === 'ai' && Array.isArray(lastMessage.content) && lastMessage.content[0]?.functionCall) {
+                    const functionCall = lastMessage.content[0].functionCall;
+                    latestAiContent = `*Using tool: ${functionCall.name}...*`; // Indicate tool use
+                    console.log("Extracted AI Tool Call initiation:", latestAiContent); // DEBUG LOG
+                  
+                  // 4. Handle potential error string within tool content (like the 500 error example)
+                  } else if (lastMessage?.type === 'tool' && typeof lastMessage.content === 'string' && lastMessage.content.startsWith('Error:')) {
+                     latestAiContent = `*Tool Error:* ${lastMessage.content.substring(7)}`; // Display tool error
+                     console.log("Extracted Tool Error Content:", latestAiContent);
+                  }
+                }
+              } else if (currentEventType === 'metadata') {
+                // Handle metadata if needed (e.g., run_id)
+                console.log("Received metadata:", parsedData); // DEBUG LOG
+              } else {
+                 console.log(`Unhandled event type '${currentEventType}' or structure:`, parsedData); // DEBUG LOG
+              }
+
+              if (latestAiContent !== null) {
+                setMessages((prevMessages) => {
+                  const placeholderIndex = prevMessages.findIndex(msg => msg.id === assistantMessageId);
+                  if (placeholderIndex !== -1) {
+                    const updatedMessages = [...prevMessages];
+                    // Always replace content when processing full messages from 'values'
+                    updatedMessages[placeholderIndex] = {
+                      ...updatedMessages[placeholderIndex],
+                      content: latestAiContent, // Use the extracted/formatted content
+                    };
+                    return updatedMessages;
+                  } else {
+                    console.warn("Placeholder message not found for update:", assistantMessageId);
+                    return prevMessages;
+                  }
+                });
+              }
+              // --- End Extraction & State Update Logic ---
+
+            } catch (jsonParseError) {
+              console.warn("Failed to parse JSON data payload:", dataPayload, jsonParseError);
+            }
+          }
+        } // end while loop processing messages in accumulatedText
+      } // end while loop reading stream
     } catch (error) {
       console.error('Error getting AI stream response:', error);
-      // Remove the placeholder message on error
-      setMessages((prev) => prev.filter(msg => msg.id !== assistantMessageId));
+      setIsTyping(false); // Stop typing on error
+      setMessages((prev) => prev.filter(msg => msg.id !== assistantMessageId)); // Remove placeholder
       toast({
         title: "Error",
         description: `Failed to get a response: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Ensure general loading stops
+      // isTyping is handled in `done` and `catch`
     }
+    // --- End Robust Stream Processing Logic --- 
   };
 
   return (
@@ -246,17 +320,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             />
           ))}
           
-          {isLoading && (
+          {/* Typing Indicator */} 
+          {isTyping && (
             <div className="px-4 py-6 sm:px-6">
               <div className="mx-auto flex max-w-3xl gap-4 sm:gap-6">
                 <div className="relative mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-primary/10 text-primary border-primary/20">
-                  <span className="animate-pulse-subtle">•••</span>
+                  <span className="animate-pulse">...</span> 
                 </div>
                 <div className="min-w-0 flex-1 space-y-2">
-                  {/* Simulate streaming appearance */}
                   <div className="h-4 w-1/3 rounded bg-muted animate-pulse"></div>
-                  <div className="h-4 w-2/3 rounded bg-muted animate-pulse"></div>
-                  <div className="h-4 w-1/2 rounded bg-muted animate-pulse"></div>
                 </div>
               </div>
             </div>
@@ -280,7 +352,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       
       <ChatInput 
         onSendMessage={handleSendMessage}
-        isLoading={isLoading}
+        // Pass isTyping instead of isLoading to disable input while agent is responding
+        isLoading={isTyping} 
       />
     </div>
   );

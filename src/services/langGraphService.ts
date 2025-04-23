@@ -2,7 +2,7 @@
 
 const LANGGRAPH_BASE_URL = "https://flowseo-langchain-830de3a38db8596f89b474712b4e58ea.us.langgraph.app";
 // It's generally better to store API keys in environment variables, but using it directly for now as per instructions.
-const LANGGRAPH_API_KEY = "QUxMIFlPVVIgQkFTRSBBUkUgQkVMT05HIFRPIFVT";
+const LANGGRAPH_API_KEY = "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";
 const ASSISTANT_ID = "agent"; // Assuming 'agent' is the correct assistant ID based on the curl example
 
 interface CreateThreadResponse {
@@ -37,6 +37,7 @@ export const createThread = async (): Promise<string> => {
     const response = await fetch(`${LANGGRAPH_BASE_URL}/threads`, {
       method: "POST",
       headers: commonHeaders,
+      body: JSON.stringify({})
     });
 
     if (!response.ok) {
@@ -65,9 +66,11 @@ export const createThread = async (): Promise<string> => {
  */
 export const runAssistantStream = async (threadId: string, userInput: string): Promise<ReadableStream<Uint8Array>> => {
   try {
-    const requestBody: RunAssistantRequestBody = {
+    const requestBody = {
       input: {
-        user_input: userInput,
+        messages: [
+          { role: "user", content: userInput }
+        ]
       },
       assistant_id: ASSISTANT_ID,
     };
