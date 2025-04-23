@@ -37,6 +37,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [threadId, setThreadId] = useState<string | null>(null); // State for thread ID
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null); // Ref for scrolling
+  const bufferRef = useRef(""); // Buffer to hold incomplete chunks
+  const assistantMessageIdRef = useRef<string | null>(null); // Ref to hold the current assistant message ID
 
   // Effect to create a thread when the component mounts or conversation changes
   useEffect(() => {
@@ -85,16 +87,158 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     // return () => { sessionStorage.removeItem(`threadId_${activeConversationId}`); }; 
   }, [activeConversationId, toast]);
 
-  // Effect to scroll down when messages change
-  useEffect(() => {
+  // --- Helper function for scrolling ---
+  const scrollToBottom = () => {
     if (scrollAreaRef.current) {
       const viewport = scrollAreaRef.current.querySelector<HTMLDivElement>('[data-radix-scroll-area-viewport]');
       if (viewport) {
-        // Use smooth scrolling
         viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
       }
     }
+  };
+
+  // Effect to scroll down when messages change
+  useEffect(() => {
+    scrollToBottom();
   }, [messages]); // Trigger scroll on new message
+
+  // --- Refined Stream Handling Logic ---
+  // Added optional finalAssistantId parameter for the final flush
+  const handleIncomingChunk = (chunk: string, finalAssistantId: string | null = null) => {
+    bufferRef.current += chunk;
+    // console.log("Chunk Received:", chunk); // DEBUG -> Removed
+    // console.log("Buffer Before Processing:", bufferRef.current); // DEBUG -> Removed
+
+    const eventDelimiter = '\n\n';
+    let eventEnd = bufferRef.current.indexOf(eventDelimiter);
+
+    while (eventEnd !== -1) {
+      // Extract the string containing one or more events up to the delimiter
+      const rawEventsBlock = bufferRef.current.slice(0, eventEnd).trim();
+      // Remove the processed block and delimiter from the buffer
+      bufferRef.current = bufferRef.current.slice(eventEnd + eventDelimiter.length);
+      // console.log("Processing Events Block:", rawEventsBlock); // DEBUG -> Removed
+      // console.log("Buffer After Slice:", bufferRef.current); // DEBUG -> Removed
+
+      if (!rawEventsBlock) { // Skip if the extracted part is empty
+          eventEnd = bufferRef.current.indexOf(eventDelimiter); // Find next delimiter
+          continue;
+      }
+
+      // --- START: Split rawEventsBlock into individual events ---
+      // Use positive lookahead to split before "event:", keeping the delimiter
+      const subEvents = rawEventsBlock.split(/(?=event:)/);
+
+      subEvents.forEach(subEventString => {
+        if (!subEventString.trim()) return; // Skip empty strings resulting from split
+
+        const lines = subEventString.trim().split('\n');
+        let eventType = '';
+        let data = ''; // Reset data for each sub-event
+
+        lines.forEach(line => {
+          if (line.startsWith('event:')) {
+            eventType = line.replace('event:', '').trim();
+          } else if (line.startsWith('data:')) {
+            // Append the content after 'data: ', handling multi-line data correctly
+            data += line.substring(5); // Don't trim here
+          }
+        });
+
+        if (eventType && data) {
+          // console.log(`Found Sub-Event: ${eventType}, Data: ${data}`); // DEBUG -> Removed
+          try {
+            const parsedData = JSON.parse(data);
+            switch (eventType) {
+              case "metadata":
+                // console.log("Received metadata:", parsedData); // DEBUG -> Removed
+                if (!isTyping) setIsTyping(true);
+                break;
+              case "values":
+                // Pass the finalAssistantId if available
+                processValuesEvent(parsedData, finalAssistantId); 
+                break;
+              default:
+                console.warn(`Unhandled event type: ${eventType}`);
+            }
+          } catch (e) {
+            // Log the error and the specific data that caused it
+            console.error("JSON parsing failed for sub-event:", e, { eventType, data });
+          }
+        } else {
+            console.warn("Skipping sub-event part without valid event/data:", subEventString);
+        }
+      });
+      // --- END: Split rawEventsBlock into individual events ---
+
+      // Find the next event delimiter in the potentially modified buffer
+      eventEnd = bufferRef.current.indexOf(eventDelimiter);
+    }
+    // console.log("Buffer After Loop:", bufferRef.current); // DEBUG -> Removed
+  };
+
+  const handleStreamEnd = () => {
+    // Capture the ID *before* potentially clearing the ref or flushing
+    const finalAssistantId = assistantMessageIdRef.current; 
+    
+    if (bufferRef.current.trim()) {
+      console.warn("Final buffer content (attempting final parse):", bufferRef.current);
+      // Force processing of any leftover content by adding a delimiter
+      // Pass the captured ID for this final processing step
+      handleIncomingChunk("\n\n", finalAssistantId); 
+    }
+    
+    // Ensure buffer is cleared *after* final processing attempt
+    bufferRef.current = ""; 
+    setIsTyping(false); // Ensure typing stops
+    
+    // Clear the ref as the very last step
+    assistantMessageIdRef.current = null; 
+    console.log("Stream end processed, buffer cleared, typing stopped.");
+  };
+  // --- End Refined Stream Handling Logic ---
+
+  // --- Helper function to process 'values' events ---
+  // Added optional finalAssistantId parameter
+  const processValuesEvent = (data: any, finalAssistantId: string | null = null) => {
+    // The 'values' event seems to contain the whole history.
+    // Find the latest AI message in the received chunk.
+    const latestAiMessage = data?.messages?.filter((m: any) => m.type === 'ai').pop();
+    
+    // Use the finalAssistantId if provided (from handleStreamEnd), otherwise use the ref
+    const targetAssistantId = finalAssistantId ?? assistantMessageIdRef.current;
+
+    if (latestAiMessage && targetAssistantId) {
+      setMessages((prevMessages) => {
+        const messageIndex = prevMessages.findIndex(msg => msg.id === targetAssistantId);
+        if (messageIndex !== -1) {
+          const updatedMessages = [...prevMessages];
+          // Update the content of the existing placeholder/message with the full content from the stream
+          updatedMessages[messageIndex] = {
+            ...updatedMessages[messageIndex],
+            content: latestAiMessage.content || '', // Use the full content
+            // Update other relevant fields if necessary from latestAiMessage
+            // e.g., response_metadata, tool_calls if they exist and are needed
+          };
+          // Ensure we scroll down as content updates
+          // Debounce or throttle this if performance becomes an issue
+          requestAnimationFrame(scrollToBottom); 
+          return updatedMessages;
+        } else {
+          // This warning might still appear if the placeholder wasn't created correctly initially
+          console.warn("Assistant message placeholder not found for ID:", targetAssistantId); 
+          return prevMessages;
+        }
+      });
+    } else if (!targetAssistantId) {
+        // This condition should be less likely now with the finalAssistantId logic
+        console.warn("Received 'values' event but no target assistant message ID is available.");
+    } else if (!latestAiMessage) {
+        // This might happen if the 'values' event doesn't contain an AI message yet or has an unexpected structure
+        // console.log("No AI message found in 'values' event data:", data); // Keep commented unless debugging needed
+    }
+  };
+  // --- End Helper function ---
 
   const handleSendMessage = async (content: string) => {
     // Check if user has reached message limit
@@ -127,7 +271,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     // Add user message to chat
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true); // Keep general loading if needed
-    setIsTyping(true); // Start typing indicator
+    // setIsTyping(true); // Typing indicator is now started by handleIncomingChunk on first event
     
     // Increment message count in parent component
     if (onSendMessage) {
@@ -136,6 +280,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     
     // Get AI response via stream
     const assistantMessageId = `assistant-${Date.now()}`;
+    assistantMessageIdRef.current = assistantMessageId; // Store the ID for handleIncomingChunk
+
     // Add a placeholder for the assistant message
     setMessages((prev) => [
       ...prev,
@@ -147,141 +293,46 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       },
     ]);
 
-    // --- Robust Stream Processing Logic --- 
-    let accumulatedText = '';
-    let currentEventType: string | null = null;
-
+    // --- Refined Stream Processing Loop ---
     try {
       const stream = await runAssistantStream(threadId, content);
       const reader = stream.getReader();
       const decoder = new TextDecoder();
 
-      // eslint-disable-next-line no-constant-condition
+      // Use while loop for clarity
       while (true) {
-        const { value, done } = await reader.read();
+        const { done, value } = await reader.read();
         if (done) {
-          setIsTyping(false); // Stop typing when stream ends
-          // Process any remaining text? Unlikely needed if stream terminates correctly.
-          if (accumulatedText.trim()) {
-            console.warn("Stream ended with unprocessed text:", accumulatedText);
-          }
-          break;
+          // console.log("Stream finished."); // DEBUG LOG -> Removed
+          handleStreamEnd(); // Process remaining buffer and clean up
+          break; // Exit the loop
         }
-
         const chunk = decoder.decode(value, { stream: true });
-        console.log("Raw Chunk:", chunk); // DEBUG LOG
-        accumulatedText += chunk;
-
-        // Process complete messages separated by \n\n
-
-        let messageEndIndex;
-        while ((messageEndIndex = accumulatedText.indexOf('\n\n')) !== -1) {
-          const messageText = accumulatedText.substring(0, messageEndIndex);
-          accumulatedText = accumulatedText.substring(messageEndIndex + 2); // Remove message + \n\n
-
-          let eventTypeForMessage = 'message'; // Default
-          let dataPayload = '';
-
-          const lines = messageText.split('\n');
-          for (const line of lines) {
-            if (line.startsWith('event: ')) {
-              eventTypeForMessage = line.slice(6).trim();
-              currentEventType = eventTypeForMessage; // Store the most recent event type
-              console.log("SSE Event:", currentEventType); // DEBUG LOG
-            } else if (line.startsWith('data: ')) {
-              dataPayload += line.slice(5); // Append data content
-            } 
-            // Ignore comment lines (starting with ':') and empty lines within the message block
-          }
-
-          if (dataPayload) {
-            console.log("Processing data payload for event", currentEventType, ":", dataPayload); // DEBUG LOG
-            try {
-              const parsedData = JSON.parse(dataPayload);
-              console.log("Parsed Data:", parsedData); // DEBUG LOG
-
-              // --- Extraction & State Update Logic ---
-              let latestAiContent: string | null = null;
-
-              if (currentEventType === 'values' && Array.isArray(parsedData?.messages)) {
-                const messagesArray = parsedData.messages;
-                if (messagesArray.length > 0) {
-                  const lastMessage = messagesArray[messagesArray.length - 1];
-
-                  // 1. AI message with text content
-                  if (lastMessage?.type === 'ai' && typeof lastMessage.content === 'string') {
-                    latestAiContent = lastMessage.content;
-                    console.log("Extracted AI Content from 'values':", latestAiContent); // DEBUG LOG
-                  
-                  // 2. Tool message with string content (likely JSON results)
-                  } else if (lastMessage?.type === 'tool' && typeof lastMessage.content === 'string') {
-                    try {
-                      const toolData = JSON.parse(lastMessage.content);
-                      // Format keyword results nicely
-                      if (Array.isArray(toolData) && toolData[0]?.keyword) {
-                        const formattedKeywords = toolData.slice(0, 10).map((kw: any) => 
-                          `- ${kw.keyword} (Vol: ${kw.volume}, CPC: ${kw.cpc?.toFixed(2)}, Comp: ${kw.competition})`
-                        ).join('\n');
-                        latestAiContent = `Keyword Research Results for "${toolData[0]?.search_question || 'query'}":\n\n${formattedKeywords}${toolData.length > 10 ? '\n...' : ''}`;
-                      } else {
-                        // Generic JSON formatting for other tool results
-                        latestAiContent = `Tool Result:\n\`\`\`json\n${JSON.stringify(toolData, null, 2)}\n\`\`\``;
-                      }
-                    } catch (toolParseError) {
-                      // Fallback for non-JSON tool results or parse errors
-                      latestAiContent = `Tool Result (raw):\n${lastMessage.content}`;
-                      console.warn("Could not parse tool result JSON:", toolParseError);
-                    }
-                    console.log("Extracted Tool Content from 'values':", latestAiContent); // DEBUG LOG
-                  
-                  // 3. AI message initiating a tool call (content is an array with functionCall)
-                  } else if (lastMessage?.type === 'ai' && Array.isArray(lastMessage.content) && lastMessage.content[0]?.functionCall) {
-                    const functionCall = lastMessage.content[0].functionCall;
-                    latestAiContent = `*Using tool: ${functionCall.name}...*`; // Indicate tool use
-                    console.log("Extracted AI Tool Call initiation:", latestAiContent); // DEBUG LOG
-                  
-                  // 4. Handle potential error string within tool content (like the 500 error example)
-                  } else if (lastMessage?.type === 'tool' && typeof lastMessage.content === 'string' && lastMessage.content.startsWith('Error:')) {
-                     latestAiContent = `*Tool Error:* ${lastMessage.content.substring(7)}`; // Display tool error
-                     console.log("Extracted Tool Error Content:", latestAiContent);
-                  }
-                }
-              } else if (currentEventType === 'metadata') {
-                // Handle metadata if needed (e.g., run_id)
-                console.log("Received metadata:", parsedData); // DEBUG LOG
-              } else {
-                 console.log(`Unhandled event type '${currentEventType}' or structure:`, parsedData); // DEBUG LOG
-              }
-
-              if (latestAiContent !== null) {
-                setMessages((prevMessages) => {
-                  const placeholderIndex = prevMessages.findIndex(msg => msg.id === assistantMessageId);
-                  if (placeholderIndex !== -1) {
-                    const updatedMessages = [...prevMessages];
-                    // Always replace content when processing full messages from 'values'
-                    updatedMessages[placeholderIndex] = {
-                      ...updatedMessages[placeholderIndex],
-                      content: latestAiContent, // Use the extracted/formatted content
-                    };
-                    return updatedMessages;
-                  } else {
-                    console.warn("Placeholder message not found for update:", assistantMessageId);
-                    return prevMessages;
-                  }
-                });
-              }
-              // --- End Extraction & State Update Logic ---
-
-            } catch (jsonParseError) {
-              console.warn("Failed to parse JSON data payload:", dataPayload, jsonParseError);
-            }
-          }
-        } // end while loop processing messages in accumulatedText
-      } // end while loop reading stream
+        // console.log("Raw Chunk Received:", chunk); // DEBUG LOG -> Removed
+        handleIncomingChunk(chunk); // Process the chunk
+      }
     } catch (error) {
       console.error('Error getting AI stream response:', error);
-      setIsTyping(false); // Stop typing on error
-      setMessages((prev) => prev.filter(msg => msg.id !== assistantMessageId)); // Remove placeholder
+      // Ensure cleanup happens even on error
+      handleStreamEnd(); // Clear buffer, stop typing etc.
+      // Update placeholder with error message
+      setMessages((prev) => {
+          const errorMsg = `Error: ${error instanceof Error ? error.message : 'Failed to get response.'}`;
+          // Use the ID captured when the error occurred, before the ref might be cleared
+          const targetId = assistantMessageId; // Use the ID captured at the start of handleSendMessage
+          const placeholderIndex = prev.findIndex(msg => msg.id === targetId);
+          if (placeholderIndex !== -1) {
+              const updatedMessages = [...prev];
+              updatedMessages[placeholderIndex] = {
+                  ...updatedMessages[placeholderIndex],
+                  content: errorMsg,
+                  isError: true,
+              };
+              return updatedMessages;
+          }
+          // Fallback: add a new error message if placeholder is gone
+          return [...prev, { id: `error-${Date.now()}`, role: 'assistant', content: errorMsg, timestamp: new Date(), isError: true }];
+      });
       toast({
         title: "Error",
         description: `Failed to get a response: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
@@ -289,9 +340,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       });
     } finally {
       setIsLoading(false); // Ensure general loading stops
-      // isTyping is handled in `done` and `catch`
+      // isTyping is handled by handleStreamEnd and catch block
     }
-    // --- End Robust Stream Processing Logic --- 
+    // --- End Refined Stream Processing Loop ---
   };
 
   return (
