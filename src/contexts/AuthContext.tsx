@@ -55,9 +55,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const createTempUser = async () => {
     try {
-      // Set temporary session in localStorage
+      // Use type assertion to work with temp_users table
       const { data, error } = await supabase
-        .from('temp_users')
+        .from('temp_users' as any)
         .insert({ tier: 'free' })
         .select()
         .single();
@@ -111,8 +111,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (storedTempUserId) {
         try {
+          // Use type assertion for temp_users table
           const { data, error } = await supabase
-            .from('temp_users')
+            .from('temp_users' as any)
             .select('*')
             .eq('id', storedTempUserId)
             .single();
