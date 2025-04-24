@@ -90,11 +90,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const claimTempUser = async (tempUserId: string) => {
     try {
+      // Define the type for RPC parameters
+      interface MigrateTempUserParams {
+        temp_user_id: string;
+        user_id?: string;
+      }
+
       // Call the server-side function to migrate temp user data
-      const { error } = await supabase.rpc('migrate_temp_user_to_profile', {
-        temp_user_id: tempUserId,
-        user_id: user?.id
-      } as any); // Type assertion for the RPC parameters
+      const { error } = await supabase.rpc(
+        'migrate_temp_user_to_profile', 
+        { 
+          temp_user_id: tempUserId,
+          user_id: user?.id
+        } as MigrateTempUserParams
+      );
 
       if (error) throw error;
 
