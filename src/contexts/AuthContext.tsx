@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -103,10 +102,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       // Call the server-side function to migrate temp user data
-      const { error } = await supabase.rpc(
-        'migrate_temp_user_to_profile', 
-        migrationParams
-      );
+      const { error } = await supabase.functions.invoke('migrate-temp-user', {
+        body: JSON.stringify(migrationParams)
+      });
 
       if (error) throw error;
 
