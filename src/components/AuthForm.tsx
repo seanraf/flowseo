@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -23,6 +24,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { tempUser, claimTempUser } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -36,11 +38,18 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
     setIsLoading(true);
     try {
       if (mode === 'register') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: values.email,
           password: values.password,
         });
+
         if (error) throw error;
+
+        // If temp user exists, claim it
+        if (tempUser) {
+          await claimTempUser(tempUser.id);
+        }
+
         toast({
           title: 'Registration successful',
           description: 'Please check your email to verify your account.',
@@ -50,9 +59,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
           email: values.email,
           password: values.password,
         });
+
         if (error) throw error;
-        navigate('/');
       }
+      
+      navigate('/');
     } catch (error: any) {
       toast({
         title: 'Error',

@@ -16,6 +16,9 @@ const Index = () => {
   const [messageCount, setMessageCount] = useState(0);
   const FREE_MESSAGE_LIMIT = 10;
 
+  const { user, profile, tempUser, isLoading } = useAuth();
+  const navigate = useNavigate();
+
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
@@ -99,34 +102,35 @@ const Index = () => {
 
   // This function will be passed to ChatInterface to track message count
   const incrementMessageCount = () => {
+    const currentUser = user || tempUser;
+    const currentProfile = profile || { tier: 'free' };
+
     setMessageCount(prevCount => prevCount + 1);
       
-    // Check if user has reached the message limit
-    if (messageCount + 1 >= FREE_MESSAGE_LIMIT) {
+    if (currentProfile.tier === 'free' && messageCount + 1 >= FREE_MESSAGE_LIMIT) {
       toast({
         title: "Free Plan Message Limit Reached",
-        description: "You've reached the 10 message limit for the free plan. Upgrade to continue chatting.",
+        description: "You've reached the 10 message limit for the free plan. Register to continue chatting or upgrade.",
         variant: "destructive",
       });
     }
   };
   
-  const { user, profile, isLoading } = useAuth();
-  const navigate = useNavigate();
+  const isUnlimitedUser = profile?.tier === 'unlimited';
 
+  // If no user is logged in and not a temp user, redirect to auth
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!isLoading && !user && !tempUser) {
       navigate('/auth');
     }
-  }, [user, isLoading, navigate]);
+  }, [user, tempUser, isLoading, navigate]);
 
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
-  const isUnlimitedUser = profile?.tier === 'unlimited';
-
   return (
+    // Existing JSX with added support for temp users
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar overlay for mobile */}
       {sidebarOpen && (
@@ -147,14 +151,20 @@ const Index = () => {
       />
       
       <div className="flex flex-1 flex-col md:ml-[280px]">
-        <Header toggleSidebar={toggleSidebar} activeConversationTitle={conversations.find(conv => conv.active)?.title || null} />
+        <Header 
+          toggleSidebar={toggleSidebar} 
+          activeConversationTitle={conversations.find(conv => conv.active)?.title || null} 
+        />
         <main className="flex-1 overflow-hidden">
           <ChatInterface 
             activeConversationId={activeConversationId} 
             isUnlimitedMode={isUnlimitedUser}
             onSendMessage={incrementMessageCount}
             messageCount={messageCount}
-            messageLimitReached={!isUnlimitedUser && messageCount >= FREE_MESSAGE_LIMIT}
+            messageLimitReached={
+              // Limit applies to both temp and registered free users
+              !isUnlimitedUser && messageCount >= FREE_MESSAGE_LIMIT
+            }
           />
         </main>
       </div>
