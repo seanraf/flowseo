@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ChatInterface from '@/components/ChatInterface';
 import { useToast } from '@/components/ui/use-toast';
-import { useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -13,27 +13,8 @@ const Index = () => {
   ]);
   const [activeConversationId, setActiveConversationId] = useState('1');
   const { toast } = useToast();
-  const location = useLocation();
-  
-  // Check if we're in unlimited test mode
-  const [isUnlimitedMode, setIsUnlimitedMode] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
   const FREE_MESSAGE_LIMIT = 10;
-
-  useEffect(() => {
-    // Check if the URL has ?unlimited=true parameter
-    const searchParams = new URLSearchParams(location.search);
-    const unlimited = searchParams.get('unlimited') === 'true';
-    setIsUnlimitedMode(unlimited);
-    
-    // If in unlimited mode, show a toast notification
-    if (unlimited) {
-      toast({
-        title: "Unlimited Testing Mode",
-        description: "You're currently testing the unlimited version with no restrictions.",
-      });
-    }
-  }, [location.search, toast]);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -50,7 +31,7 @@ const Index = () => {
 
   const handleNewConversation = () => {
     // Check if user is at the limit and not in unlimited mode
-    if (conversations.length >= 1 && !isUnlimitedMode) {
+    if (conversations.length >= 1) {
       toast({
         title: "Free Plan Limit Reached",
         description: "Upgrade to create more than 1 sandbox. Use the Upgrade button to see plan options.",
@@ -118,19 +99,32 @@ const Index = () => {
 
   // This function will be passed to ChatInterface to track message count
   const incrementMessageCount = () => {
-    if (!isUnlimitedMode) {
-      setMessageCount(prevCount => prevCount + 1);
+    setMessageCount(prevCount => prevCount + 1);
       
-      // Check if user has reached the message limit
-      if (messageCount + 1 >= FREE_MESSAGE_LIMIT) {
-        toast({
-          title: "Free Plan Message Limit Reached",
-          description: "You've reached the 10 message limit for the free plan. Upgrade to continue chatting.",
-          variant: "destructive",
-        });
-      }
+    // Check if user has reached the message limit
+    if (messageCount + 1 >= FREE_MESSAGE_LIMIT) {
+      toast({
+        title: "Free Plan Message Limit Reached",
+        description: "You've reached the 10 message limit for the free plan. Upgrade to continue chatting.",
+        variant: "destructive",
+      });
     }
   };
+  
+  const { user, profile, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate('/auth');
+    }
+  }, [user, isLoading, navigate]);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  const isUnlimitedUser = profile?.tier === 'unlimited';
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -152,16 +146,15 @@ const Index = () => {
         onRenameConversation={handleRenameConversation}
       />
       
-      {/* Main content */}
       <div className="flex flex-1 flex-col md:ml-[280px]">
         <Header toggleSidebar={toggleSidebar} activeConversationTitle={conversations.find(conv => conv.active)?.title || null} />
         <main className="flex-1 overflow-hidden">
           <ChatInterface 
             activeConversationId={activeConversationId} 
-            isUnlimitedMode={isUnlimitedMode}
+            isUnlimitedMode={isUnlimitedUser}
             onSendMessage={incrementMessageCount}
             messageCount={messageCount}
-            messageLimitReached={!isUnlimitedMode && messageCount >= FREE_MESSAGE_LIMIT}
+            messageLimitReached={!isUnlimitedUser && messageCount >= FREE_MESSAGE_LIMIT}
           />
         </main>
       </div>

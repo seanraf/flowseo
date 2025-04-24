@@ -1,10 +1,12 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { CheckCircle2, XCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PricingModalProps {
   children: React.ReactNode;
@@ -15,24 +17,39 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
   const [selectedPlan, setSelectedPlan] = useState<'limited' | 'unlimited' | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const handleSubscribe = (plan: 'limited' | 'unlimited') => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
     setSelectedPlan(plan);
     setConfirmOpen(true);
   };
 
-  const confirmSubscription = () => {
-    // In a real implementation, this would redirect to Stripe
-    toast({
-      title: `${selectedPlan === 'limited' ? 'Limited' : 'Unlimited'} Plan Selected`,
-      description: "You would be redirected to Stripe for payment in a real implementation.",
-    });
-    setConfirmOpen(false);
-    setOpen(false);
-  };
+  const confirmSubscription = async () => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ tier: selectedPlan })
+        .eq('id', user?.id);
 
-  const handleTestUnlimited = () => {
-    window.location.href = '/?unlimited=true';
+      if (error) throw error;
+
+      toast({
+        title: `Subscription Updated`,
+        description: `You are now on the ${selectedPlan} plan.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+    setConfirmOpen(false);
     setOpen(false);
   };
 
@@ -104,17 +121,6 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
                     Subscribe
                   </Button>
                 </div>
-              </div>
-            </div>
-            
-            <div className="mt-6 pt-4 border-t">
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-muted-foreground">
-                  Want to see how the unlimited version works?
-                </p>
-                <Button variant="outline" onClick={handleTestUnlimited}>
-                  Test Unlimited Version
-                </Button>
               </div>
             </div>
           </div>
