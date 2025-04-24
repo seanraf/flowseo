@@ -55,15 +55,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const createTempUser = async () => {
     try {
-      // Use type assertion to work with temp_users table
-      const { data, error } = await supabase
+      // Define response type to make TypeScript happy
+      interface TempUserResponse {
+        id: string;
+        tier: UserTier;
+      }
+      
+      // Use type assertion to work with temp_users table and specify response type
+      const response = await supabase
         .from('temp_users' as any)
         .insert({ tier: 'free' })
         .select()
         .single();
-
-      if (error) throw error;
-
+      
+      // Handle potential errors
+      if (response.error) throw response.error;
+      
+      // Safely assert the data type
+      const data = response.data as unknown as TempUserResponse;
+      
       const newTempUser = { 
         id: data.id, 
         tier: data.tier as UserTier 
@@ -84,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.rpc('migrate_temp_user_to_profile', {
         temp_user_id: tempUserId,
         user_id: user?.id
-      });
+      } as any); // Type assertion for the RPC parameters
 
       if (error) throw error;
 
@@ -111,13 +121,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (storedTempUserId) {
         try {
+          // Define response type
+          interface TempUserResponse {
+            id: string;
+            tier: UserTier;
+          }
+          
           // Use type assertion for temp_users table
-          const { data, error } = await supabase
+          const response = await supabase
             .from('temp_users' as any)
             .select('*')
             .eq('id', storedTempUserId)
             .single();
-
+          
+          if (response.error) throw response.error;
+          
+          // Safely assert the data type
+          const data = response.data as unknown as TempUserResponse;
+          
           if (data) {
             setTempUser({ 
               id: data.id, 
