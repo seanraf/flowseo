@@ -1,9 +1,9 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { CheckCircle2, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, ArrowLeft, Loader2 } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -12,6 +12,7 @@ const Success = () => {
   const navigate = useNavigate();
   const { checkSubscription } = useAuth();
   const { toast } = useToast();
+  const [isUpdating, setIsUpdating] = useState(true);
 
   useEffect(() => {
     const updateSubscription = async () => {
@@ -28,6 +29,8 @@ const Success = () => {
         });
       } catch (error) {
         console.error("Error updating subscription status:", error);
+      } finally {
+        setIsUpdating(false);
       }
     };
 
@@ -35,7 +38,8 @@ const Success = () => {
   }, [checkSubscription, toast]);
 
   const handleBack = () => {
-    navigate('/');
+    // Directly navigate to the dashboard with replace to avoid back button issues
+    navigate('/', { replace: true });
   };
 
   return (
@@ -60,9 +64,22 @@ const Success = () => {
           </p>
         </CardContent>
         <CardFooter className="flex justify-center pb-6">
-          <Button onClick={handleBack} className="flex gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Go to Dashboard
+          <Button 
+            onClick={handleBack} 
+            className="flex gap-2"
+            disabled={isUpdating}
+          >
+            {isUpdating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Updating Subscription...
+              </>
+            ) : (
+              <>
+                <ArrowLeft className="h-4 w-4" />
+                Go to Dashboard
+              </>
+            )}
           </Button>
         </CardFooter>
       </Card>

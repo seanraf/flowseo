@@ -12,6 +12,9 @@ const Cancel = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    // Clear the checkout in progress flag
+    localStorage.removeItem('checkoutInProgress');
+    
     // Show toast notification when the component mounts
     toast({
       title: "Subscription cancelled",
@@ -20,7 +23,8 @@ const Cancel = () => {
   }, [toast]);
 
   const handleBack = () => {
-    navigate('/');
+    // Directly navigate to the dashboard
+    navigate('/', { replace: true });
   };
 
   return (

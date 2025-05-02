@@ -16,10 +16,34 @@ const Index = () => {
   const [activeConversationId, setActiveConversationId] = useState('1');
   const { toast } = useToast();
   const [messageCount, setMessageCount] = useState(0);
+  const [pageLoading, setPageLoading] = useState(true);
   const FREE_MESSAGE_LIMIT = 10;
 
-  const { user, profile, tempUser, isLoading } = useAuth();
+  const { user, profile, tempUser, isLoading, checkSubscription } = useAuth();
   const navigate = useNavigate();
+
+  // Check for any pending checkout process on initial load
+  useEffect(() => {
+    const checkoutInProgress = localStorage.getItem('checkoutInProgress');
+    
+    const initPage = async () => {
+      if (checkoutInProgress) {
+        // Wait a moment to ensure subscription check has completed
+        await new Promise(r => setTimeout(r, 1000));
+        // Force refresh subscription status
+        try {
+          await checkSubscription();
+        } catch (e) {
+          console.error("Error refreshing subscription status:", e);
+        }
+        // Remove the flag
+        localStorage.removeItem('checkoutInProgress');
+      }
+      setPageLoading(false);
+    };
+    
+    initPage();
+  }, [checkSubscription]);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -127,7 +151,7 @@ const Index = () => {
     }
   }, [user, tempUser, isLoading, navigate]);
 
-  if (isLoading) {
+  if (isLoading || pageLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">

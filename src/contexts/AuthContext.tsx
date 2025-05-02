@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { useAuthState } from '@/hooks/useAuthState';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,10 +22,12 @@ const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, tempUser, isLoading, signOut, createTempUser, claimTempUser } = useAuthState();
   const [subscriptionTier, setSubscriptionTier] = useState<'free' | 'limited' | 'unlimited'>('free');
+  const [checkingSubscription, setCheckingSubscription] = useState(false);
   const navigate = useNavigate();
 
   const checkSubscription = async () => {
     if (user) {
+      setCheckingSubscription(true);
       try {
         const { data, error } = await supabase.functions.invoke('check-subscription', {
           body: {}
@@ -39,6 +42,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         console.error("Error invoking check-subscription function:", err);
         setSubscriptionTier('free');
+      } finally {
+        setCheckingSubscription(false);
       }
     } else {
       setSubscriptionTier('free');
@@ -55,6 +60,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (data.url) {
         window.location.href = data.url;
+      } else if (data.redirectToPricing) {
+        navigate('/?showPricing=true', { replace: true });
       } else {
         throw new Error("No portal URL returned");
       }
@@ -65,14 +72,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    checkSubscription();
-  }, [user]);
+    if (!isLoading && user) {
+      checkSubscription();
+    }
+  }, [user, isLoading]);
 
   const value: AuthContextProps = {
     user,
     profile,
     tempUser,
-    isLoading,
+    isLoading: isLoading || checkingSubscription,
     signOut,
     createTempUser,
     claimTempUser,
