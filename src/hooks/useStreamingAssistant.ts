@@ -2,7 +2,8 @@
 import { useState, useRef, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Message } from '@/components/MessageItem';
-import { createThread, runAssistantStream } from '@/services/langGraphService';
+import { initializeAssistantThread, sendAssistantMessage } from '@/utils/assistantThreadUtils';
+import { handleStreamChunk, processValuesEvent } from '@/utils/assistantEventHandlers';
 
 interface UseStreamingAssistantProps {
   onSendMessage?: () => void;
@@ -18,122 +19,23 @@ export const useStreamingAssistant = ({ onSendMessage, messageLimitReached = fal
   const bufferRef = useRef("");
   const assistantMessageIdRef = useRef<string | null>(null);
 
-  // Initialize thread
-  const initializeThread = useCallback(async (conversationId: string, welcomeMessage: Message) => {
-    setIsLoading(true);
-    console.log("Initializing thread for activeConversationId:", conversationId);
-    
-    try {
-      // Attempt to retrieve threadId from sessionStorage first
-      const storedThreadId = sessionStorage.getItem(`threadId_${conversationId}`);
-      console.log("Stored threadId:", storedThreadId);
-      
-      if (storedThreadId) {
-        setThreadId(storedThreadId);
-        setMessages([welcomeMessage]);
-      } else {
-        console.log("Creating a new thread...");
-        const newThreadId = await createThread();
-        console.log("New threadId created:", newThreadId);
-        setThreadId(newThreadId);
-        sessionStorage.setItem(`threadId_${conversationId}`, newThreadId);
-        setMessages([welcomeMessage]);
-      }
-    } catch (error) {
-      console.error("Error initializing thread:", error);
-      toast({
-        title: "Error",
-        description: "Failed to initialize chat session. Please refresh.",
-        variant: "destructive",
-      });
-      setMessages([welcomeMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
-  // Process incoming chunks
-  const handleIncomingChunk = useCallback((chunk: string, finalAssistantId: string | null = null) => {
-    bufferRef.current += chunk;
-    
-    const eventDelimiter = '\n\n';
-    let eventEnd = bufferRef.current.indexOf(eventDelimiter);
-
-    while (eventEnd !== -1) {
-      const rawEventsBlock = bufferRef.current.slice(0, eventEnd).trim();
-      bufferRef.current = bufferRef.current.slice(eventEnd + eventDelimiter.length);
-
-      if (!rawEventsBlock) {
-          eventEnd = bufferRef.current.indexOf(eventDelimiter);
-          continue;
-      }
-
-      const subEvents = rawEventsBlock.split(/(?=event:)/);
-
-      subEvents.forEach(subEventString => {
-        if (!subEventString.trim()) return;
-
-        const lines = subEventString.trim().split('\n');
-        let eventType = '';
-        let data = '';
-
-        lines.forEach(line => {
-          if (line.startsWith('event:')) {
-            eventType = line.replace('event:', '').trim();
-          } else if (line.startsWith('data:')) {
-            data += line.substring(5);
-          }
-        });
-
-        if (eventType && data) {
-          try {
-            const parsedData = JSON.parse(data);
-            switch (eventType) {
-              case "metadata":
-                if (!isTyping) setIsTyping(true);
-                break;
-              case "values":
-                processValuesEvent(parsedData, finalAssistantId);
-                break;
-              default:
-                console.warn(`Unhandled event type: ${eventType}`);
-            }
-          } catch (e) {
-            console.error("JSON parsing failed for sub-event:", e, { eventType, data });
-          }
-        } else {
-            console.warn("Skipping sub-event part without valid event/data:", subEventString);
-        }
-      });
-
-      eventEnd = bufferRef.current.indexOf(eventDelimiter);
-    }
-  }, [isTyping]);
-
-  // Process values events
-  const processValuesEvent = useCallback((data: any, finalAssistantId: string | null = null) => {
-    const latestAiMessage = data?.messages?.filter((m: any) => m.type === 'ai').pop();
+  // Process values events coming from the assistant
+  const processValues = useCallback((data: any, finalAssistantId: string | null = null) => {
     const targetAssistantId = finalAssistantId ?? assistantMessageIdRef.current;
-
-    if (latestAiMessage && targetAssistantId) {
-      setMessages((prevMessages) => {
-        const messageIndex = prevMessages.findIndex(msg => msg.id === targetAssistantId);
-        if (messageIndex !== -1) {
-          const updatedMessages = [...prevMessages];
-          updatedMessages[messageIndex] = {
-            ...updatedMessages[messageIndex],
-            content: latestAiMessage.content || '',
-          };
-          return updatedMessages;
-        } else {
-          console.warn("Assistant message placeholder not found for ID:", targetAssistantId);
-          return prevMessages;
-        }
-      });
-    } else if (!targetAssistantId) {
-      console.warn("Received 'values' event but no target assistant message ID is available.");
-    }
+    processValuesEvent(data, targetAssistantId, setMessages);
   }, []);
+
+  // Handle incoming chunk from the stream
+  const handleIncomingChunk = useCallback((chunk: string) => {
+    handleStreamChunk(
+      chunk, 
+      bufferRef, 
+      isTyping, 
+      setIsTyping, 
+      processValues,
+      assistantMessageIdRef.current
+    );
+  }, [isTyping, processValues]);
 
   // Handle stream end
   const handleStreamEnd = useCallback(() => {
@@ -141,16 +43,39 @@ export const useStreamingAssistant = ({ onSendMessage, messageLimitReached = fal
     
     if (bufferRef.current.trim()) {
       console.warn("Final buffer content (attempting final parse):", bufferRef.current);
-      handleIncomingChunk("\n\n", finalAssistantId);
+      handleStreamChunk(
+        "\n\n", 
+        bufferRef, 
+        isTyping, 
+        setIsTyping, 
+        processValues,
+        finalAssistantId
+      );
     }
     
     bufferRef.current = "";
     setIsTyping(false);
     assistantMessageIdRef.current = null;
     console.log("Stream end processed, buffer cleared, typing stopped.");
-  }, [handleIncomingChunk]);
+  }, [isTyping, processValues]);
 
-  // Send message function
+  // Initialize thread
+  const initializeThread = useCallback(async (conversationId: string, welcomeMessage: Message) => {
+    setIsLoading(true);
+    console.log("Initializing thread for activeConversationId:", conversationId);
+    
+    const result = await initializeAssistantThread(conversationId, setThreadId, setIsLoading, { toast });
+    
+    if (result.success) {
+      setMessages([welcomeMessage]);
+    } else {
+      setMessages([welcomeMessage]);
+    }
+    
+    setIsLoading(false);
+  }, [toast]);
+
+  // Send message
   const sendMessage = useCallback(async (content: string) => {
     if (messageLimitReached) {
       toast({
@@ -202,25 +127,17 @@ export const useStreamingAssistant = ({ onSendMessage, messageLimitReached = fal
       },
     ]);
 
-    try {
-      const stream = await runAssistantStream(threadId, content);
-      const reader = stream.getReader();
-      const decoder = new TextDecoder();
+    const result = await sendAssistantMessage({
+      threadId,
+      content,
+      assistantMessageId,
+      handleIncomingChunk,
+      handleStreamEnd
+    });
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          handleStreamEnd();
-          break;
-        }
-        const chunk = decoder.decode(value, { stream: true });
-        handleIncomingChunk(chunk);
-      }
-    } catch (error) {
-      console.error('Error getting AI stream response:', error);
-      handleStreamEnd();
+    if (!result.success) {
+      const errorMsg = `Error: ${result.errorMessage}`;
       setMessages((prev) => {
-        const errorMsg = `Error: ${error instanceof Error ? error.message : 'Failed to get response.'}`;
         const targetId = assistantMessageId;
         const placeholderIndex = prev.findIndex(msg => msg.id === targetId);
         if (placeholderIndex !== -1) {
@@ -236,12 +153,12 @@ export const useStreamingAssistant = ({ onSendMessage, messageLimitReached = fal
       });
       toast({
         title: "Error",
-        description: `Failed to get a response: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+        description: `Failed to get a response: ${result.errorMessage}. Please try again.`,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+    
+    setIsLoading(false);
   }, [threadId, messageLimitReached, onSendMessage, handleIncomingChunk, handleStreamEnd, toast]);
 
   return {
