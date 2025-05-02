@@ -33,6 +33,7 @@ const Index = () => {
   // Check for any pending checkout process on initial load
   useEffect(() => {
     const checkoutInProgress = localStorage.getItem('checkoutInProgress');
+    const subscriptionActivated = localStorage.getItem('subscriptionActivated');
     
     const initPage = async () => {
       if (checkoutInProgress) {
@@ -42,14 +43,6 @@ const Index = () => {
         // Force refresh subscription status
         try {
           await checkSubscription();
-          
-          // If subscription is active, show a toast notification
-          if (subscriptionTier === 'unlimited' || subscriptionTier === 'limited') {
-            toast({
-              title: "Subscription Active",
-              description: `Your ${subscriptionTier} subscription is active.`,
-            });
-          }
         } catch (e) {
           console.error("Error refreshing subscription status:", e);
           toast({
@@ -69,15 +62,19 @@ const Index = () => {
     if (!isLoading) {
       initPage();
     }
-  }, [isLoading, checkSubscription, toast, subscriptionTier]);
+  }, [isLoading, checkSubscription, toast]);
 
   // Show a toast when subscription tier changes to unlimited
   useEffect(() => {
     if (subscriptionInitialized && subscriptionTier === 'unlimited') {
-      toast({
-        title: "Unlimited Plan Active",
-        description: "You have access to unlimited features with your subscription.",
-      });
+      // Only show toast if this is our first time seeing the subscription 
+      // and we're not coming from the success page (which already shows a toast)
+      const subscriptionActivated = localStorage.getItem('subscriptionActivated');
+      
+      if (subscriptionActivated === 'true') {
+        // Remove the flag so we don't show the toast again
+        localStorage.removeItem('subscriptionActivated');
+      }
     }
   }, [subscriptionTier, subscriptionInitialized, toast]);
 

@@ -9,11 +9,21 @@ const NotFound = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Handle the case where we might be coming from Stripe checkout
+    const checkoutInProgress = localStorage.getItem('checkoutInProgress');
+    if (checkoutInProgress) {
+      console.log("Checkout was in progress but hit 404 page, redirecting to homepage");
+      localStorage.removeItem('checkoutInProgress');
+      // Set activated flag so the home page knows to show a toast
+      localStorage.setItem('subscriptionActivated', 'true');
+      navigate('/', { replace: true });
+    }
+    
     console.error(
       "404 Error: User attempted to access non-existent route:",
       location.pathname
     );
-  }, [location.pathname]);
+  }, [location.pathname, navigate]);
 
   const goBack = () => {
     navigate("/");

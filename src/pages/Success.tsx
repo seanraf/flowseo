@@ -22,6 +22,9 @@ const Success = () => {
         // Clear the checkout in progress flag
         localStorage.removeItem('checkoutInProgress');
         
+        // Set a flag to indicate we've shown the success toast already
+        localStorage.setItem('subscriptionActivated', 'true');
+        
         // Refresh subscription status - try up to 3 times with increasing delays
         // This helps in case Stripe needs more time to update the status
         const result = await checkSubscription();

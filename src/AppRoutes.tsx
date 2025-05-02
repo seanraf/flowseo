@@ -18,6 +18,16 @@ const AppRoutes = () => {
       setIsReady(true);
     }, 1000);
 
+    // Check for any Stripe redirect artifacts and clean them up
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('checkout') || urlParams.has('session_id')) {
+      // This is likely a redirect from Stripe, let's make sure we don't lose our checkout state
+      if (window.location.pathname !== '/success' && window.location.pathname !== '/cancel') {
+        localStorage.setItem('checkoutInProgress', 'true');
+        localStorage.setItem('subscriptionActivated', 'true');
+      }
+    }
+
     return () => clearTimeout(timer);
   }, []);
 
