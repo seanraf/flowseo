@@ -103,22 +103,28 @@ export const useSubscription = () => {
       
       if (error) throw new Error(error.message);
       
+      if (data && data.error) {
+        throw new Error(data.error);
+      }
+      
       toast({
         title: "Subscription Cancelled",
         description: "Your subscription will remain active until the end of the current billing period.",
       });
       
       // Update subscription details with cancelAtPeriodEnd flag
-      if (subscriptionDetails && data.success) {
+      if (subscriptionDetails && data && data.success) {
         setSubscriptionDetails({
           ...subscriptionDetails,
-          cancelAtPeriodEnd: data.cancelAtPeriodEnd,
+          cancelAtPeriodEnd: data.cancelAtPeriodEnd || true,
           currentPeriodEnd: data.currentPeriodEnd || subscriptionDetails.currentPeriodEnd
         });
       }
       
       // Refresh subscription details from auth context
       await checkSubscription();
+      
+      return true;
     } catch (err: any) {
       console.error("Failed to cancel subscription:", err);
       toast({
@@ -126,6 +132,7 @@ export const useSubscription = () => {
         description: err.message || "Failed to cancel subscription. Please try again later.",
         variant: "destructive",
       });
+      throw err;
     } finally {
       setCancelling(false);
     }
@@ -140,6 +147,10 @@ export const useSubscription = () => {
       });
       
       if (error) throw new Error(error.message);
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
       
       if (data.url) {
         // Store the fact that we're in a checkout flow

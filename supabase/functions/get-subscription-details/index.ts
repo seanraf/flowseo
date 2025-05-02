@@ -15,6 +15,7 @@ const logStep = (step: string, details?: any) => {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -65,12 +66,15 @@ serve(async (req) => {
       
       logStep("Using cached subscription data from database", subscriberData);
       
+      // Check if the cancel_at_period_end property exists in subscriberData
+      const cancelAtPeriodEnd = subscriberData.cancel_at_period_end || false;
+      
       return new Response(JSON.stringify({
         id: subscriberData.id,
         status: "active",
         tier: subscriberData.subscription_tier,
         currentPeriodEnd: subscriberData.subscription_end,
-        cancelAtPeriodEnd: subscriberData.cancel_at_period_end || false,
+        cancelAtPeriodEnd: cancelAtPeriodEnd,
         price: subscriberData.subscription_tier === 'limited' ? 20 : 99,
         currency: "usd"
       }), {
@@ -134,18 +138,23 @@ serve(async (req) => {
     logStep("Determined tier from price", { amount, tier });
 
     // Update the subscribers table with the latest information
-    await supabaseClient.from("subscribers").upsert({
-      email: user.email,
-      user_id: user.id,
-      stripe_customer_id: customerId,
-      subscribed: subscription.status === 'active',
-      subscription_tier: tier,
-      subscription_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      cancel_at_period_end: subscription.cancel_at_period_end,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'email' });
-
-    logStep("Updated subscribers table with latest information");
+    // Only update fields that are guaranteed to exist
+    try {
+      await supabaseClient.from("subscribers").upsert({
+        email: user.email,
+        user_id: user.id,
+        stripe_customer_id: customerId,
+        subscribed: subscription.status === 'active',
+        subscription_tier: tier,
+        subscription_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'email' });
+      
+      logStep("Updated subscribers table with latest information");
+    } catch (error: any) {
+      logStep("Error updating subscriber record", { error: error.message });
+      // Continue execution even if the database update fails
+    }
 
     // Format response data
     const subscriptionDetails = {

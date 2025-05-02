@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CreditCard, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -15,6 +14,7 @@ interface BillingHistoryTabProps {
 
 const BillingHistoryTab: React.FC<BillingHistoryTabProps> = ({ isFreeTier, subscriptionTier }) => {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const { openCustomerPortal } = useAuth();
 
@@ -24,10 +24,13 @@ const BillingHistoryTab: React.FC<BillingHistoryTabProps> = ({ isFreeTier, subsc
     }
     
     setLoading(true);
+    setError(null);
+
     try {
       await openCustomerPortal();
     } catch (error: any) {
       console.error("Failed to open customer portal:", error);
+      setError(error.message || "Failed to open customer portal. Please try again later.");
       toast({
         title: "Error",
         description: error.message || "Failed to open customer portal. Please try again later.",
@@ -47,6 +50,16 @@ const BillingHistoryTab: React.FC<BillingHistoryTabProps> = ({ isFreeTier, subsc
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {error && (
+          <div className="p-4 mb-4 text-sm bg-destructive/10 text-destructive rounded-md">
+            <p className="font-medium">Error occurred:</p>
+            <p>{error}</p>
+            <p className="mt-2 text-xs">
+              Note: You may need to set up your Stripe customer portal in the Stripe dashboard.
+            </p>
+          </div>
+        )}
+
         <div className="space-y-6">
           <div>
             <h3 className="text-lg font-medium mb-4">Payment Methods</h3>

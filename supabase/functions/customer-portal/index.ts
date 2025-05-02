@@ -15,6 +15,7 @@ const logStep = (step: string, details?: any) => {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -62,10 +63,11 @@ serve(async (req) => {
     // Get request origin for the return URL
     const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
 
-    // Create Stripe customer portal session
+    // Create a simple billing portal session configuration
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${origin}/subscription`,
+      // The default configuration should be set up in the Stripe dashboard
     });
 
     logStep("Created customer portal session", { sessionId: portalSession.id });

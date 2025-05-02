@@ -15,6 +15,7 @@ const logStep = (step: string, details?: any) => {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -90,20 +91,18 @@ serve(async (req) => {
       logStep("Subscription cancelled immediately", { subscriptionId: subscription.id });
     }
 
-    // Update subscription status in our database
+    // Update subscription status in our database - Modify the query to work with existing columns
     const subscriptionEnd = new Date((updatedSubscription.current_period_end || 0) * 1000).toISOString();
     
-    const { error: updateError } = await supabaseClient.from('subscribers').upsert({
-      email: user.email,
-      user_id: user.id,
-      stripe_customer_id: customerId,
-      subscribed: true, // Still true until period ends
-      subscription_end: subscriptionEnd,
-      cancel_at_period_end: true, // We need to track this separately
-      subscription_tier: subscription.items.data[0].plan.nickname?.toLowerCase() || 
-                        (subscription.items.data[0].price.unit_amount || 0) <= 2000 ? 'limited' : 'unlimited',
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'email' });
+    // Use a simpler approach to update the database
+    const { error: updateError } = await supabaseClient
+      .from('subscribers')
+      .update({
+        subscribed: true, // Still true until period ends
+        subscription_end: subscriptionEnd,
+        updated_at: new Date().toISOString()
+      })
+      .eq('email', user.email);
     
     if (updateError) {
       logStep("Error updating subscriber record", { error: updateError.message });

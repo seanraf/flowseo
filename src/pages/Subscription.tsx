@@ -19,6 +19,7 @@ const Subscription = () => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const { subscriptionTier } = useAuth();
   const { toast } = useToast();
   
@@ -59,6 +60,18 @@ const Subscription = () => {
       // Error already handled in the hook
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleCancelSubscriptionClick = async () => {
+    setCancelError(null);
+    
+    try {
+      await handleCancelSubscription();
+      setCancelDialogOpen(false);
+    } catch (error: any) {
+      setCancelError(error.message || "An error occurred while cancelling your subscription");
+      // Don't close the dialog so user can see the error
     }
   };
 
@@ -143,7 +156,8 @@ const Subscription = () => {
         <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
           <CancelSubscriptionDialog 
             cancelling={cancelling}
-            onCancel={handleCancelSubscription}
+            onCancel={handleCancelSubscriptionClick}
+            error={cancelError}
           />
         </AlertDialog>
       </div>

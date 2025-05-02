@@ -5,7 +5,7 @@ project_id = "pktikklryhhemfidupor"
 verify_jwt = true
 
 [functions.create-checkout]
-verify_jwt = false
+verify_jwt = true
 
 [functions.check-subscription]
 verify_jwt = true
