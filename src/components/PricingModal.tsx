@@ -1,12 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { CheckCircle2, XCircle, Loader2, LogIn } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+
+import PricingPlans from './pricing/PricingPlans';
+import SubscriptionConfirmDialog from './pricing/SubscriptionConfirmDialog';
 
 interface PricingModalProps {
   children: React.ReactNode;
@@ -94,121 +95,22 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
               </p>
             </div>
 
-            {!user ? (
-              <div className="rounded-xl border bg-card text-card-foreground shadow p-6 text-center">
-                <LogIn className="h-12 w-12 mx-auto mb-4 text-primary" />
-                <h3 className="text-xl font-bold mb-2">Account Required</h3>
-                <p className="text-muted-foreground mb-6">
-                  You need to create an account or sign in before subscribing to a plan.
-                </p>
-                <Button onClick={handleSignUp} className="w-full md:w-auto">
-                  Sign Up or Login
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                {/* Limited Plan */}
-                <div className="rounded-xl border bg-card text-card-foreground shadow relative overflow-hidden flex flex-col">
-                  <div className="flex flex-col p-6 space-y-4 flex-1">
-                    <h3 className="text-xl font-bold">Limited Plan</h3>
-                    <div className="text-3xl font-bold">$20 <span className="text-sm font-normal text-muted-foreground">/month</span></div>
-                    <p className="text-sm text-muted-foreground">For Freelancers & Small Businesses</p>
-                    
-                    <div className="space-y-2 flex-1">
-                      <FeatureItem feature="Unlimited Keyword Research" available={true} note="(with caching)" />
-                      <FeatureItem feature="15 AI-Generated Articles" available={true} />
-                      <FeatureItem feature="3 Active Projects" available={true} />
-                      <FeatureItem feature="Archived Projects for Data Retention" available={true} />
-                      <FeatureItem feature="CSV Export of Keyword Lists" available={true} />
-                      <FeatureItem feature="Basic SEO Filtering & Competitor Analysis" available={true} />
-                    </div>
-                  </div>
-                  
-                  <div className="p-6 pt-0 mt-auto">
-                    <Button 
-                      className="w-full" 
-                      onClick={() => handleSubscribe('limited')}
-                    >
-                      Subscribe
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Unlimited Plan */}
-                <div className="rounded-xl border bg-card text-card-foreground shadow relative overflow-hidden flex flex-col">
-                  <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl">
-                    POPULAR
-                  </div>
-                  <div className="flex flex-col p-6 space-y-4 flex-1">
-                    <h3 className="text-xl font-bold">Unlimited Plan</h3>
-                    <div className="text-3xl font-bold">$99 <span className="text-sm font-normal text-muted-foreground">/month</span></div>
-                    <p className="text-sm text-muted-foreground">For Agencies & Enterprises</p>
-                    
-                    <div className="space-y-2 flex-1">
-                      <FeatureItem feature="Unlimited Keyword Research" available={true} />
-                      <FeatureItem feature="Unlimited AI Content Generation" available={true} />
-                      <FeatureItem feature="Unlimited Active Projects" available={true} />
-                      <FeatureItem feature="Advanced Competitive Insights & SEO Outlines" available={true} />
-                      <FeatureItem feature="Priority Support" available={true} />
-                      <FeatureItem feature="CSV Export & CMS Integration" available={true} />
-                    </div>
-                  </div>
-                  
-                  <div className="p-6 pt-0 mt-auto">
-                    <Button 
-                      className="w-full" 
-                      variant="default"
-                      onClick={() => handleSubscribe('unlimited')}
-                    >
-                      Subscribe
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <PricingPlans 
+              user={user} 
+              onSignUp={handleSignUp} 
+              onSelectPlan={handleSubscribe} 
+            />
           </div>
         </DialogContent>
       </Dialog>
       
-      {/* Confirmation Dialog */}
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Subscription</AlertDialogTitle>
-            <AlertDialogDescription>
-              You're about to subscribe to the {selectedPlan === 'limited' ? 'Limited ($20/month)' : 'Unlimited ($99/month)'} plan. 
-              You'll be redirected to Stripe to complete your payment.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction disabled={loading} onClick={confirmSubscription}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                  Processing
-                </>
-              ) : (
-                'Continue to Checkout'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SubscriptionConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        selectedPlan={selectedPlan}
+        loading={loading}
+        onConfirm={confirmSubscription}
+      />
     </>
   );
 };
-
-// Helper component for feature list items
-const FeatureItem = ({ feature, available, note }: { feature: string; available: boolean; note?: string }) => (
-  <div className="flex items-center">
-    {available ? (
-      <CheckCircle2 className="h-4 w-4 text-primary mr-2 flex-shrink-0" />
-    ) : (
-      <XCircle className="h-4 w-4 text-muted-foreground mr-2 flex-shrink-0" />
-    )}
-    <span className={`text-sm ${available ? '' : 'text-muted-foreground'}`}>
-      {feature} {note && <span className="text-xs text-muted-foreground">{note}</span>}
-    </span>
-  </div>
-);
