@@ -29,6 +29,12 @@ const AccountMenu = () => {
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
 
   const getInitials = () => {
+    // Check for custom display initials in profile first
+    if (profile?.display_initials) {
+      return profile.display_initials.toUpperCase();
+    }
+    
+    // Fallback to email-based initials
     if (user?.email) {
       return user.email.substring(0, 2).toUpperCase();
     }
@@ -85,7 +91,7 @@ const AccountMenu = () => {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
             <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-primary text-primary-foreground">
+              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                 {user ? getInitials() : '?'}
               </AvatarFallback>
             </Avatar>
@@ -108,7 +114,7 @@ const AccountMenu = () => {
                 setTimeout(() => setProfileDialogOpen(true), 100);
               }}>
                 <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+                <span>Display Initials</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => {
                 setDropdownOpen(false);
@@ -152,7 +158,7 @@ const AccountMenu = () => {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Profile</DialogTitle>
+            <DialogTitle>Edit Display Initials</DialogTitle>
           </DialogHeader>
           <UserProfileForm onSuccess={() => setProfileDialogOpen(false)} />
         </DialogContent>

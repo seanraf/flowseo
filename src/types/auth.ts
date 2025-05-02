@@ -6,7 +6,7 @@ export type UserTier = 'free' | 'limited' | 'unlimited';
 export interface Profile {
   id: string;
   email: string;
-  username?: string;
+  display_initials?: string;
   tier: UserTier;
 }
 

@@ -13,13 +13,16 @@ interface UserProfileFormProps {
   onSuccess?: () => void;
 }
 
-const UsernameSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters').max(50)
+const DisplayInitialsSchema = z.object({
+  display_initials: z.string()
+    .min(1, 'Display initials must be at least 1 character')
+    .max(2, 'Display initials cannot be more than 2 characters')
+    .regex(/^[A-Za-z0-9]*$/, 'Only letters and numbers are allowed')
 });
 
 const UserProfileForm: React.FC<UserProfileFormProps> = ({ onSuccess }) => {
   const { user, profile } = useAuth();
-  const [username, setUsername] = useState(profile?.username || '');
+  const [displayInitials, setDisplayInitials] = useState(profile?.display_initials || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const { toast } = useToast();
@@ -32,7 +35,7 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ onSuccess }) => {
       setIsLoading(true);
       
       // Validate input
-      const result = UsernameSchema.safeParse({ username });
+      const result = DisplayInitialsSchema.safeParse({ display_initials: displayInitials });
       if (!result.success) {
         setError(result.error.errors[0].message);
         return;
@@ -42,7 +45,7 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ onSuccess }) => {
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ 
-          username,
+          display_initials: displayInitials,
           updated_at: new Date().toISOString()
         })
         .eq('id', user?.id);
@@ -89,13 +92,18 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ onSuccess }) => {
       <Separator />
 
       <div className="space-y-2">
-        <Label htmlFor="username">Username</Label>
+        <Label htmlFor="display_initials">Display Initials</Label>
         <Input
-          id="username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="Enter your preferred username"
+          id="display_initials"
+          value={displayInitials}
+          onChange={(e) => setDisplayInitials(e.target.value.slice(0, 2).toUpperCase())}
+          placeholder="Enter 1-2 characters"
+          className="uppercase"
+          maxLength={2}
         />
+        <p className="text-xs text-muted-foreground">
+          These initials will appear in your avatar. Maximum 2 characters.
+        </p>
         {error && (
           <p className="text-xs text-destructive">{error}</p>
         )}
