@@ -21,7 +21,7 @@ const DisplayInitialsSchema = z.object({
 });
 
 const UserProfileForm: React.FC<UserProfileFormProps> = ({ onSuccess }) => {
-  const { user, profile, checkSubscription } = useAuth();
+  const { user, profile } = useAuth();
   const [displayInitials, setDisplayInitials] = useState(profile?.display_initials || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -41,29 +41,32 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ onSuccess }) => {
         return;
       }
 
+      // Make sure user exists
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
       // Update the profile in Supabase
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ 
-          display_initials: displayInitials,
+          display_initials: displayInitials.toUpperCase(),
           updated_at: new Date().toISOString()
         })
-        .eq('id', user?.id);
+        .eq('id', user.id);
 
       if (updateError) {
         throw updateError;
       }
       
-      // Force a refresh of auth context data
-      await checkSubscription();
-
       toast({
         title: "Profile Updated",
         description: "Your display initials have been successfully updated."
       });
 
+      // Call the success callback if provided
       if (onSuccess) {
-        onSuccess();
+        setTimeout(() => onSuccess(), 100);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');

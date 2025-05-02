@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -23,18 +23,20 @@ const AccountMenu = () => {
   const { user, profile, signOut, subscriptionTier, openCustomerPortal, checkSubscription } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [profileDialogOpen, setProfileDialogOpen] = React.useState(false);
-  const [passwordDialogOpen, setPasswordDialogOpen] = React.useState(false);
-  const [dropdownOpen, setDropdownOpen] = React.useState(false);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [initials, setInitials] = useState('');
 
-  // Force refresh profile after dialog closes to update initials
+  // Initialize and update initials when profile changes
   useEffect(() => {
-    if (!profileDialogOpen && profile) {
-      checkSubscription();
+    if (profile) {
+      setInitials(getInitialsFromProfile());
     }
-  }, [profileDialogOpen, profile, checkSubscription]);
+  }, [profile]);
 
-  const getInitials = () => {
+  // Get initials from profile or email
+  const getInitialsFromProfile = () => {
     // Check for custom display initials in profile first
     if (profile?.display_initials) {
       return profile.display_initials.toUpperCase();
@@ -48,6 +50,21 @@ const AccountMenu = () => {
     return 'U';
   };
   
+  // Handle profile dialog close with proper refresh
+  const handleProfileDialogClose = (success = false) => {
+    setProfileDialogOpen(false);
+    
+    // Only refresh data if successful update
+    if (success) {
+      // Use setTimeout to avoid state update conflicts
+      setTimeout(() => {
+        checkSubscription().catch(error => {
+          console.error("Error refreshing profile data:", error);
+        });
+      }, 100);
+    }
+  };
+
   const handleOpenCustomerPortal = async () => {
     try {
       toast({
@@ -55,23 +72,22 @@ const AccountMenu = () => {
         description: "Opening customer portal...",
       });
       
-      // Try the context function first
       try {
         await openCustomerPortal();
       } catch (error) {
         console.log("Failed with context function, trying direct function call", error);
-        // If that fails, call the function directly
+        
         const { data, error: fnError } = await supabase.functions.invoke('customer-portal', {
           body: {}
         });
         
-        if (fnError) throw fnError;
+        if (fnError) {
+          throw fnError;
+        }
         
         if (data.redirectToPricing) {
-          // If user has no subscription, redirect to pricing
           navigate('/?showPricing=true');
         } else if (data.url) {
-          // If we have a portal URL, navigate to it
           window.location.href = data.url;
         } else if (data.error) {
           throw new Error(data.error);
@@ -103,7 +119,7 @@ const AccountMenu = () => {
           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
             <Avatar className="h-8 w-8">
               <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                {user ? getInitials() : '?'}
+                {user ? initials : '?'}
               </AvatarFallback>
             </Avatar>
           </Button>
@@ -164,14 +180,16 @@ const AccountMenu = () => {
       <Dialog 
         open={profileDialogOpen} 
         onOpenChange={(open) => {
-          setProfileDialogOpen(open);
+          if (!open) {
+            handleProfileDialogClose();
+          }
         }}
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Display Initials</DialogTitle>
           </DialogHeader>
-          <UserProfileForm onSuccess={() => setProfileDialogOpen(false)} />
+          <UserProfileForm onSuccess={() => handleProfileDialogClose(true)} />
         </DialogContent>
       </Dialog>
 
