@@ -54,7 +54,17 @@ serve(async (req) => {
     });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     if (customers.data.length === 0) {
-      throw new Error("No Stripe customer found for this user");
+      // Instead of throwing an error, redirect to pricing page
+      logStep("No Stripe customer found, redirecting to pricing page");
+      const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
+      return new Response(JSON.stringify({ 
+        error: "No subscription found",
+        redirectToPricing: true,
+        url: `${origin}/?showPricing=true` 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });

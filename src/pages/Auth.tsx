@@ -16,8 +16,9 @@ const Auth = () => {
   const searchParams = new URLSearchParams(location.search);
   const fromPricing = searchParams.get('from') === 'pricing';
   const planParam = searchParams.get('plan');
+  const tabParam = searchParams.get('tab');
   const selectedPlan = planParam === 'limited' || planParam === 'unlimited' ? planParam : undefined;
-  const [defaultTab, setDefaultTab] = useState(fromPricing ? 'register' : 'login');
+  const [defaultTab, setDefaultTab] = useState(fromPricing ? 'register' : tabParam === 'register' ? 'register' : 'login');
   const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
 
   const handleBack = () => {

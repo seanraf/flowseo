@@ -1,11 +1,10 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { CheckCircle2, XCircle, Loader2, LogIn } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -21,6 +20,20 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const showPricing = searchParams.get('showPricing') === 'true';
+
+  // Open the pricing modal automatically if the URL parameter is present
+  useEffect(() => {
+    if (showPricing) {
+      setOpen(true);
+      // Clean up the URL
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('showPricing');
+      window.history.replaceState({}, '', newUrl.toString());
+    }
+  }, [showPricing]);
 
   const handleSubscribe = (plan: 'limited' | 'unlimited') => {
     if (!user) {
@@ -34,7 +47,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
   };
 
   const handleSignUp = () => {
-    navigate('/auth?from=pricing');
+    navigate('/auth?from=pricing&tab=register');
     setOpen(false);
   };
 

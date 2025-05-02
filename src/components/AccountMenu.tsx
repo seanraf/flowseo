@@ -1,4 +1,5 @@
 
+// We need to update handleOpenCustomerPortal to handle the redirectToPricing response
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -17,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useNavigate } from 'react-router-dom';
 import UserProfileForm from '@/components/UserProfileForm';
 import PasswordChangeForm from '@/components/PasswordChangeForm';
+import { supabase } from '@/integrations/supabase/client';
 
 const AccountMenu = () => {
   const { user, profile, signOut, subscriptionTier, openCustomerPortal } = useAuth();
@@ -27,10 +29,6 @@ const AccountMenu = () => {
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
 
   const getInitials = () => {
-    if (profile?.username) {
-      return profile.username.substring(0, 2).toUpperCase();
-    }
-    
     if (user?.email) {
       return user.email.substring(0, 2).toUpperCase();
     }
@@ -40,19 +38,45 @@ const AccountMenu = () => {
   
   const handleOpenCustomerPortal = async () => {
     try {
-      await openCustomerPortal();
-    } catch (error) {
+      // Try the context function first
+      try {
+        await openCustomerPortal();
+      } catch (error) {
+        // If that fails, call the function directly
+        const { data, error: fnError } = await supabase.functions.invoke('customer-portal', {
+          body: {}
+        });
+        
+        if (fnError) throw fnError;
+        
+        if (data.redirectToPricing) {
+          // If user has no subscription, redirect to pricing
+          navigate('/?showPricing=true');
+        } else if (data.url) {
+          // If we have a portal URL, navigate to it
+          window.location.href = data.url;
+        } else if (data.error) {
+          throw new Error(data.error);
+        }
+      }
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to open customer portal",
+        description: "Failed to open customer portal. You may need to subscribe to a plan first.",
         variant: "destructive"
       });
+      // Redirect to pricing page if there's an error
+      navigate('/?showPricing=true');
     }
   };
 
-  const handleNavigation = (path: string) => {
+  const handleNavigation = (path: string, tab?: string) => {
     setDropdownOpen(false);
-    navigate(path);
+    if (tab) {
+      navigate(`${path}?tab=${tab}`);
+    } else {
+      navigate(path);
+    }
   };
 
   return (
@@ -111,7 +135,7 @@ const AccountMenu = () => {
                 <LogIn className="mr-2 h-4 w-4" />
                 <span>Login</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleNavigation('/auth')}>
+              <DropdownMenuItem onClick={() => handleNavigation('/auth', 'register')}>
                 <UserPlus className="mr-2 h-4 w-4" />
                 <span>Sign up</span>
               </DropdownMenuItem>

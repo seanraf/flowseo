@@ -71,12 +71,14 @@ serve(async (req) => {
     let productDetails;
     if (plan === "limited") {
       productDetails = {
-        productId: "prod_SBvI46y2KqRMr2", // User's test product ID
+        name: "Limited Plan",
+        price: 2000, // $20 in cents
         plan: "limited"
       };
     } else if (plan === "unlimited") {
       productDetails = {
-        productId: "prod_SBvI4ATCgacOfn", // User's test product ID
+        name: "Unlimited Plan",
+        price: 9900, // $99 in cents
         plan: "unlimited"
       };
     } else {
@@ -102,89 +104,37 @@ serve(async (req) => {
     }
 
     // Get origin for success/cancel URLs
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
 
-    // Create a checkout session using the specified product ID
-    let session;
-    try {
-      // First try to get prices for the specific product
-      const prices = await stripe.prices.list({
-        product: productDetails.productId,
-        active: true,
-        limit: 1,
-      });
-
-      if (prices.data.length === 0) {
-        throw new Error(`No active prices found for product ${productDetails.productId}`);
-      }
-
-      // Use the price associated with the product
-      const price = prices.data[0];
-      logStep("Found price for product", { priceId: price.id, productId: productDetails.productId });
-      
-      session = await stripe.checkout.sessions.create({
-        customer: customer.id,
-        line_items: [
-          {
-            price: price.id,
-            quantity: 1,
-          },
-        ],
-        mode: "subscription",
-        success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${origin}/cancel`,
-        metadata: {
-          plan,
-          userId: user.id,
-        },
-      });
-      
-      logStep("Created checkout session", {
-        sessionId: session.id,
-        priceId: price.id,
-        url: session.url,
-      });
-    } catch (error) {
-      logStep(`Error creating checkout session: ${error.message}`);
-      
-      // Fallback to creating a session with a simple price
-      const pricingInfo = {
-        limited: { amount: 2000, name: "Limited Plan" },
-        unlimited: { amount: 9900, name: "Unlimited Plan" }
-      };
-      
-      const planInfo = pricingInfo[plan as keyof typeof pricingInfo];
-      
-      session = await stripe.checkout.sessions.create({
-        customer: customer.id,
-        line_items: [
-          {
-            price_data: {
-              currency: "usd",
-              product_data: { 
-                name: planInfo.name,
-                id: productDetails.productId,
-              },
-              unit_amount: planInfo.amount,
-              recurring: { interval: "month" },
+    // Create checkout session directly with price_data
+    const session = await stripe.checkout.sessions.create({
+      customer: customer.id,
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: { 
+              name: productDetails.name,
             },
-            quantity: 1,
+            unit_amount: productDetails.price,
+            recurring: { interval: "month" },
           },
-        ],
-        mode: "subscription",
-        success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${origin}/cancel`,
-        metadata: {
-          plan,
-          userId: user.id,
+          quantity: 1,
         },
-      });
-      
-      logStep("Created checkout session with fallback price", {
-        sessionId: session.id,
-        url: session.url,
-      });
-    }
+      ],
+      mode: "subscription",
+      success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/cancel`,
+      metadata: {
+        plan,
+        userId: user.id,
+      },
+    });
+    
+    logStep("Created checkout session", {
+      sessionId: session.id,
+      url: session.url,
+    });
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
