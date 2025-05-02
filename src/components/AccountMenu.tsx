@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -19,12 +20,19 @@ import PasswordChangeForm from '@/components/PasswordChangeForm';
 import { supabase } from '@/integrations/supabase/client';
 
 const AccountMenu = () => {
-  const { user, profile, signOut, subscriptionTier, openCustomerPortal } = useAuth();
+  const { user, profile, signOut, subscriptionTier, openCustomerPortal, checkSubscription } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [profileDialogOpen, setProfileDialogOpen] = React.useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = React.useState(false);
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
+
+  // Force refresh profile after dialog closes to update initials
+  useEffect(() => {
+    if (!profileDialogOpen && profile) {
+      checkSubscription();
+    }
+  }, [profileDialogOpen, profile, checkSubscription]);
 
   const getInitials = () => {
     // Check for custom display initials in profile first
@@ -42,10 +50,16 @@ const AccountMenu = () => {
   
   const handleOpenCustomerPortal = async () => {
     try {
+      toast({
+        title: "Loading",
+        description: "Opening customer portal...",
+      });
+      
       // Try the context function first
       try {
         await openCustomerPortal();
       } catch (error) {
+        console.log("Failed with context function, trying direct function call", error);
         // If that fails, call the function directly
         const { data, error: fnError } = await supabase.functions.invoke('customer-portal', {
           body: {}
@@ -64,13 +78,12 @@ const AccountMenu = () => {
         }
       }
     } catch (error: any) {
+      console.error("Customer portal error:", error);
       toast({
         title: "Error",
-        description: "Failed to open customer portal. You may need to subscribe to a plan first.",
+        description: "Failed to open customer portal. Please try again later.",
         variant: "destructive"
       });
-      // Redirect to pricing page if there's an error
-      navigate('/?showPricing=true');
     }
   };
 

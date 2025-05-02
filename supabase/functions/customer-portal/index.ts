@@ -52,13 +52,64 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
       typescript: true 
     });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    if (customers.data.length === 0) {
-      // Instead of throwing an error, redirect to pricing page
-      logStep("No Stripe customer found, redirecting to pricing page");
+    
+    try {
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      logStep("Checking for existing customer", { customerCount: customers.data.length });
+      
+      if (customers.data.length === 0) {
+        // Create a new customer if none exists
+        logStep("No customer found, creating new customer");
+        const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
+        
+        logStep("Redirecting to pricing page for new subscription");
+        return new Response(JSON.stringify({ 
+          redirectToPricing: true,
+          url: `${origin}/?showPricing=true` 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      
+      const customerId = customers.data[0].id;
+      logStep("Found Stripe customer", { customerId });
+
+      // Check if the customer has any subscriptions
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customerId,
+        limit: 1,
+      });
+      
+      if (subscriptions.data.length === 0) {
+        logStep("No subscriptions found, redirecting to pricing");
+        const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
+        return new Response(JSON.stringify({ 
+          redirectToPricing: true,
+          url: `${origin}/?showPricing=true` 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      
+      const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${origin}/`,
+      });
+      logStep("Customer portal session created", { sessionId: portalSession.id, url: portalSession.url });
+
+      return new Response(JSON.stringify({ url: portalSession.url }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } catch (stripeError: any) {
+      logStep("Stripe error", { message: stripeError.message });
+      // If there's an error with Stripe, redirect to pricing page
       const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
       return new Response(JSON.stringify({ 
-        error: "No subscription found",
+        error: stripeError.message,
         redirectToPricing: true,
         url: `${origin}/?showPricing=true` 
       }), {
@@ -66,20 +117,6 @@ serve(async (req) => {
         status: 200,
       });
     }
-    const customerId = customers.data[0].id;
-    logStep("Found Stripe customer", { customerId });
-
-    const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: `${origin}/`,
-    });
-    logStep("Customer portal session created", { sessionId: portalSession.id, url: portalSession.url });
-
-    return new Response(JSON.stringify({ url: portalSession.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR in customer-portal", { message: errorMessage });

@@ -21,7 +21,7 @@ const DisplayInitialsSchema = z.object({
 });
 
 const UserProfileForm: React.FC<UserProfileFormProps> = ({ onSuccess }) => {
-  const { user, profile } = useAuth();
+  const { user, profile, checkSubscription } = useAuth();
   const [displayInitials, setDisplayInitials] = useState(profile?.display_initials || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -53,10 +53,13 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ onSuccess }) => {
       if (updateError) {
         throw updateError;
       }
+      
+      // Force a refresh of auth context data
+      await checkSubscription();
 
       toast({
         title: "Profile Updated",
-        description: "Your profile has been successfully updated."
+        description: "Your display initials have been successfully updated."
       });
 
       if (onSuccess) {
