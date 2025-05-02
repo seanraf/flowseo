@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { useAuthState } from '@/hooks/useAuthState';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -25,30 +25,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [checkingSubscription, setCheckingSubscription] = useState(false);
   const navigate = useNavigate();
 
-  const checkSubscription = async () => {
-    if (user) {
-      setCheckingSubscription(true);
-      try {
-        const { data, error } = await supabase.functions.invoke('check-subscription', {
-          body: {}
-        });
-
-        if (error) {
-          console.error("Error checking subscription:", error);
-          setSubscriptionTier('free');
-        } else {
-          setSubscriptionTier(data?.subscription_tier || 'free');
-        }
-      } catch (err) {
-        console.error("Error invoking check-subscription function:", err);
-        setSubscriptionTier('free');
-      } finally {
-        setCheckingSubscription(false);
-      }
-    } else {
+  // Use useCallback to memoize the checkSubscription function
+  const checkSubscription = useCallback(async () => {
+    if (!user) {
       setSubscriptionTier('free');
+      return;
     }
-  };
+    
+    setCheckingSubscription(true);
+    try {
+      console.log("Checking subscription status for user:", user.id);
+      const { data, error } = await supabase.functions.invoke('check-subscription', {
+        body: {}
+      });
+
+      if (error) {
+        console.error("Error checking subscription:", error);
+        setSubscriptionTier('free');
+        throw error;
+      } else {
+        console.log("Subscription check response:", data);
+        setSubscriptionTier(data?.subscription_tier || 'free');
+        return data;
+      }
+    } catch (err) {
+      console.error("Error invoking check-subscription function:", err);
+      setSubscriptionTier('free');
+      throw err;
+    } finally {
+      setCheckingSubscription(false);
+    }
+  }, [user]);
 
   const openCustomerPortal = async () => {
     try {
@@ -73,9 +80,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (!isLoading && user) {
-      checkSubscription();
+      checkSubscription().catch(err => {
+        console.error("Failed to check subscription during initialization:", err);
+      });
     }
-  }, [user, isLoading]);
+  }, [user, isLoading, checkSubscription]);
 
   const value: AuthContextProps = {
     user,

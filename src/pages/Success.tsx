@@ -13,6 +13,8 @@ const Success = () => {
   const { checkSubscription } = useAuth();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(true);
+  const [attempts, setAttempts] = useState(0);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const updateSubscription = async () => {
@@ -20,7 +22,8 @@ const Success = () => {
         // Clear the checkout in progress flag
         localStorage.removeItem('checkoutInProgress');
         
-        // Refresh subscription status
+        // Refresh subscription status - try up to 3 times with increasing delays
+        // This helps in case Stripe needs more time to update the status
         await checkSubscription();
         
         toast({
@@ -29,16 +32,31 @@ const Success = () => {
         });
       } catch (error) {
         console.error("Error updating subscription status:", error);
+        
+        // If we haven't tried too many times yet, retry with increasing delay
+        if (attempts < 3) {
+          setAttempts(prev => prev + 1);
+          setTimeout(() => updateSubscription(), 2000 * (attempts + 1));
+          return;
+        }
+        
+        setHasError(true);
+        toast({
+          variant: "destructive",
+          title: "Subscription status update failed",
+          description: "We couldn't verify your subscription. Please contact support if the issue persists.",
+        });
       } finally {
         setIsUpdating(false);
       }
     };
 
     updateSubscription();
-  }, [checkSubscription, toast]);
+  }, [checkSubscription, toast, attempts]);
 
   const handleBack = () => {
     // Directly navigate to the dashboard with replace to avoid back button issues
+    // The replace: true is crucial here to prevent navigation history issues
     navigate('/', { replace: true });
   };
 
@@ -62,6 +80,12 @@ const Success = () => {
             You now have access to all the features included in your plan.
             Your subscription will renew automatically at the end of your billing period.
           </p>
+          {hasError && (
+            <p className="mt-4 text-amber-500">
+              We had trouble verifying your subscription status. Don't worry - your payment was processed successfully. 
+              Your account will be updated shortly.
+            </p>
+          )}
         </CardContent>
         <CardFooter className="flex justify-center pb-6">
           <Button 

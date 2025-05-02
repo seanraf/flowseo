@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ChatInterface from '@/components/ChatInterface';
@@ -17,10 +16,12 @@ const Index = () => {
   const { toast } = useToast();
   const [messageCount, setMessageCount] = useState(0);
   const [pageLoading, setPageLoading] = useState(true);
+  const [subscriptionInitialized, setSubscriptionInitialized] = useState(false);
   const FREE_MESSAGE_LIMIT = 10;
 
-  const { user, profile, tempUser, isLoading, checkSubscription } = useAuth();
+  const { user, profile, tempUser, isLoading, checkSubscription, subscriptionTier } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Check for any pending checkout process on initial load
   useEffect(() => {
@@ -28,22 +29,51 @@ const Index = () => {
     
     const initPage = async () => {
       if (checkoutInProgress) {
+        console.log("Checkout was in progress, refreshing subscription status");
         // Wait a moment to ensure subscription check has completed
         await new Promise(r => setTimeout(r, 1000));
         // Force refresh subscription status
         try {
-          await checkSubscription();
+          const result = await checkSubscription();
+          console.log("Subscription status refreshed:", result);
+          
+          // If subscription is active, show a toast notification
+          if (result?.subscribed) {
+            toast({
+              title: "Subscription Active",
+              description: `Your ${result.subscription_tier} subscription is active.`,
+            });
+          }
         } catch (e) {
           console.error("Error refreshing subscription status:", e);
+          toast({
+            variant: "destructive",
+            title: "Error checking subscription",
+            description: "We couldn't verify your subscription status. Please try again later.",
+          });
+        } finally {
+          // Remove the flag regardless of the outcome
+          localStorage.removeItem('checkoutInProgress');
         }
-        // Remove the flag
-        localStorage.removeItem('checkoutInProgress');
       }
+      setSubscriptionInitialized(true);
       setPageLoading(false);
     };
     
-    initPage();
-  }, [checkSubscription]);
+    if (!isLoading) {
+      initPage();
+    }
+  }, [isLoading, checkSubscription, toast]);
+
+  // Show a toast when subscription tier changes to unlimited
+  useEffect(() => {
+    if (subscriptionInitialized && subscriptionTier === 'unlimited') {
+      toast({
+        title: "Unlimited Plan Active",
+        description: "You have access to unlimited features with your subscription.",
+      });
+    }
+  }, [subscriptionTier, subscriptionInitialized, toast]);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -60,7 +90,7 @@ const Index = () => {
 
   const handleNewConversation = () => {
     // Check if user is at the limit and not in unlimited mode
-    if (conversations.length >= 1) {
+    if (subscriptionTier !== 'unlimited' && conversations.length >= 1) {
       toast({
         title: "Free Plan Limit Reached",
         description: "Upgrade to create more than 1 sandbox. Use the Upgrade button to see plan options.",
@@ -142,7 +172,7 @@ const Index = () => {
     }
   };
   
-  const isUnlimitedUser = profile?.tier === 'unlimited';
+  const isUnlimitedUser = subscriptionTier === 'unlimited';
 
   // If no user is logged in and not a temp user, redirect to auth
   useEffect(() => {
