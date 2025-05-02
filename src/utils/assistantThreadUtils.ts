@@ -1,7 +1,5 @@
-
 import { createThread, runAssistantStream } from '@/services/langGraphService';
-import { useToast } from '@/components/ui/use-toast';
-import { ToastProps } from '@/components/ui/toast';
+import { toast as toastFunction } from '@/hooks/use-toast';
 
 // Update the toast parameter type to accept just the toast function
 export const initializeAssistantThread = async (
@@ -9,7 +7,7 @@ export const initializeAssistantThread = async (
   setThreadId: React.Dispatch<React.SetStateAction<string | null>>,
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>,
   toast: {
-    toast: (props: ToastProps) => { id: string; dismiss: () => void; update: any }
+    toast: typeof toastFunction
   }
 ) => {
   try {
