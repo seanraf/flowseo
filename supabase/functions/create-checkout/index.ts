@@ -141,7 +141,7 @@ serve(async (req) => {
       status: 200,
     });
     
-  } catch (error) {
+  } catch (error: any) {
     logStep(`Error: ${error.message}`);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

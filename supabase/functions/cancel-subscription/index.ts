@@ -93,14 +93,17 @@ serve(async (req) => {
     // Update subscription status in our database
     const subscriptionEnd = new Date((updatedSubscription.current_period_end || 0) * 1000).toISOString();
     
-    const { error: updateError } = await supabaseClient.from('subscribers').update({
-      subscribed: cancelAtPeriodEnd, // Still true until period ends if cancelAtPeriodEnd is true
+    const { error: updateError } = await supabaseClient.from('subscribers').upsert({
+      email: user.email,
+      user_id: user.id,
+      stripe_customer_id: customerId,
+      subscribed: true, // Still true until period ends
       subscription_end: subscriptionEnd,
-      // Store cancel_at_period_end flag from Stripe
+      cancel_at_period_end: true, // We need to track this separately
       subscription_tier: subscription.items.data[0].plan.nickname?.toLowerCase() || 
                         (subscription.items.data[0].price.unit_amount || 0) <= 2000 ? 'limited' : 'unlimited',
       updated_at: new Date().toISOString()
-    }).eq('email', user.email);
+    }, { onConflict: 'email' });
     
     if (updateError) {
       logStep("Error updating subscriber record", { error: updateError.message });
@@ -120,7 +123,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (error) {
+  } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR in cancel-subscription", { message: errorMessage });
     return new Response(JSON.stringify({ error: errorMessage }), {

@@ -52,7 +52,6 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { 
       apiVersion: "2023-10-16",
-      typescript: true
     });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
@@ -84,13 +83,19 @@ serve(async (req) => {
     const hasActiveSub = subscriptions.data.length > 0;
     let subscriptionTier = null;
     let subscriptionEnd = null;
+    let cancelAtPeriodEnd = false;
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
+      cancelAtPeriodEnd = subscription.cancel_at_period_end;
+      logStep("Active subscription found", { 
+        subscriptionId: subscription.id, 
+        endDate: subscriptionEnd,
+        cancelAtPeriodEnd
+      });
       
-      // Determine subscription tier based on product ID
+      // Determine subscription tier based on product ID or price
       try {
         const priceId = subscription.items.data[0].price.id;
         const price = await stripe.prices.retrieve(priceId);
@@ -111,7 +116,7 @@ serve(async (req) => {
         }
         
         logStep("Determined subscription tier", { priceId, productId, subscriptionTier });
-      } catch (error) {
+      } catch (error: any) {
         logStep("Error determining subscription tier", { error: error.message });
         // Fallback
         subscriptionTier = "limited";
@@ -125,21 +130,28 @@ serve(async (req) => {
       user_id: user.id,
       stripe_customer_id: customerId,
       subscribed: hasActiveSub,
+      cancel_at_period_end: cancelAtPeriodEnd,
       subscription_tier: subscriptionTier,
       subscription_end: subscriptionEnd,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'email' });
 
-    logStep("Updated database with subscription info", { subscribed: hasActiveSub, subscriptionTier });
+    logStep("Updated database with subscription info", { 
+      subscribed: hasActiveSub, 
+      subscriptionTier,
+      cancelAtPeriodEnd
+    });
+    
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       subscription_tier: subscriptionTier,
-      subscription_end: subscriptionEnd
+      subscription_end: subscriptionEnd,
+      cancel_at_period_end: cancelAtPeriodEnd
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (error) {
+  } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR in check-subscription", { message: errorMessage });
     return new Response(JSON.stringify({ error: errorMessage }), {

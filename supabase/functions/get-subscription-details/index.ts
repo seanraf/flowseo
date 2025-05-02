@@ -70,9 +70,9 @@ serve(async (req) => {
         status: "active",
         tier: subscriberData.subscription_tier,
         currentPeriodEnd: subscriberData.subscription_end,
-        cancelAtPeriodEnd: false, // Default as we don't store this
+        cancelAtPeriodEnd: subscriberData.cancel_at_period_end || false,
         price: subscriberData.subscription_tier === 'limited' ? 20 : 99,
-        currency: "usd" // Default as we don't store this
+        currency: "usd"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -141,8 +141,9 @@ serve(async (req) => {
       subscribed: subscription.status === 'active',
       subscription_tier: tier,
       subscription_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      cancel_at_period_end: subscription.cancel_at_period_end,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
+    }, { onConflict: 'email' });
 
     logStep("Updated subscribers table with latest information");
 
@@ -162,11 +163,10 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (error) {
+  } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR in get-subscription-details", { message: errorMessage });
     
-    // Send detailed error information for troubleshooting
     return new Response(JSON.stringify({ 
       error: errorMessage,
       timestamp: new Date().toISOString(),
