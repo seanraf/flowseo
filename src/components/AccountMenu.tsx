@@ -51,11 +51,22 @@ const AccountMenu = () => {
     }, 100);
   };
 
+  // Toggle dropdown manually to ensure it works for all users
+  const handleToggleDropdown = () => {
+    setDropdownOpen(!dropdownOpen);
+  };
+
   return (
     <>
       <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
         <DropdownMenuTrigger asChild>
-          <AvatarButton initials={initials} isAuthenticated={!!user} />
+          <div> {/* Wrapper div to ensure proper event handling */}
+            <AvatarButton 
+              initials={initials} 
+              isAuthenticated={!!user} 
+              onClick={handleToggleDropdown}
+            />
+          </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           {user ? (
