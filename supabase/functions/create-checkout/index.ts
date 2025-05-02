@@ -36,8 +36,12 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
     );
 
-    // Initialize Stripe
+    // Initialize Stripe - Get the key directly
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    
+    // Log for debugging
+    logStep("Stripe key check", { keyExists: !!stripeSecretKey, keyLength: stripeSecretKey ? stripeSecretKey.length : 0 });
+    
     if (!stripeSecretKey) {
       throw new Error("Missing Stripe secret key");
     }
