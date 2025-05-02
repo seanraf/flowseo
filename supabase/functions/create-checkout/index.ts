@@ -114,11 +114,10 @@ serve(async (req) => {
       logStep("Created new customer", { customerId });
     }
 
-    // Use test product IDs for the respective plans
-    // Note: We're using the same product IDs for test mode
+    // Use the provided test product IDs for the respective plans
     const productId = plan === 'limited' ? 
-      'prod_SEoJtKvNZ41non' : 
-      'prod_SEoKwdA1IOg3RX';
+      'prod_SBvI46y2KqRMr2' : 
+      'prod_SBvI4ATCgacOfn';
       
     logStep("Using product", { productId, plan });
     

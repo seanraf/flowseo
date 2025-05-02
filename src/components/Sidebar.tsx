@@ -82,16 +82,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
       
       <div className="p-4">
-        <Button 
-          onClick={onNewConversation}
-          className="w-full justify-start gap-2 bg-sidebar-accent hover:bg-sidebar-accent/80 text-sidebar-accent-foreground"
-        >
-          <Plus className="h-4 w-4" />
-          New Sandbox
-        </Button>
-      </div>
-      
-      <div className="p-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -185,6 +175,18 @@ const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </div>
       </ScrollArea>
+      
+      <div className="absolute bottom-5 left-0 right-0 flex justify-center">
+        <Button 
+          onClick={onNewConversation}
+          variant="outline"
+          size="icon"
+          className="h-10 w-10 rounded-full shadow-md border border-border/50 bg-sidebar-accent hover:bg-sidebar-accent/80 text-sidebar-accent-foreground"
+        >
+          <Plus className="h-5 w-5" />
+          <span className="sr-only">New Sandbox</span>
+        </Button>
+      </div>
     </div>
   );
 };

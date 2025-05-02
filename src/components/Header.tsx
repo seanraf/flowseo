@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import Logo from '@/components/Logo';
+import AccountMenu from '@/components/AccountMenu';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -11,8 +11,6 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ toggleSidebar, activeConversationTitle }) => {
-  const { signOut } = useAuth();
-
   return (
     <header className="sticky top-0 z-10 w-full glass-effect border-b border-border/50 transition-all duration-300">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
@@ -51,14 +49,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, activeConversationTitle 
           </div>
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={signOut}
-          className="h-8 w-8 rounded-full"
-        >
-          <LogOut className="h-5 w-5" />
-        </Button>
+        <AccountMenu />
       </div>
     </header>
   );
