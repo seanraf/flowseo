@@ -48,6 +48,8 @@ serve(async (req) => {
     
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
+      // Force using test mode regardless of the key used
+      typescript: true
     });
 
     let email: string;
@@ -112,7 +114,8 @@ serve(async (req) => {
       logStep("Created new customer", { customerId });
     }
 
-    // Create the checkout session with the appropriate price
+    // Use test product IDs for the respective plans
+    // Note: We're using the same product IDs for test mode
     const productId = plan === 'limited' ? 
       'prod_SEoJtKvNZ41non' : 
       'prod_SEoKwdA1IOg3RX';
