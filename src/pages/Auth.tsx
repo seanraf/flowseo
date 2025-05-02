@@ -18,12 +18,22 @@ const Auth = () => {
   const planParam = searchParams.get('plan');
   const selectedPlan = planParam === 'limited' || planParam === 'unlimited' ? planParam : undefined;
   const [defaultTab, setDefaultTab] = useState(fromPricing ? 'register' : 'login');
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
 
   const handleBack = () => {
     navigate('/');
   };
 
   useEffect(() => {
+    // Check for email verification success
+    if (location.hash.includes('access_token')) {
+      setVerificationStatus('success');
+      // After successful email verification, redirect to home page after 3 seconds
+      setTimeout(() => {
+        navigate('/');
+      }, 3000);
+    }
+
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -34,7 +44,7 @@ const Auth = () => {
         }
       }
     });
-  }, [navigate, fromPricing]);
+  }, [navigate, fromPricing, location.hash]);
 
   return (
     <div className="container relative flex items-center justify-center min-h-screen py-8">
@@ -59,6 +69,14 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {verificationStatus === 'success' && (
+            <Alert className="mb-4 bg-green-50 border-green-200">
+              <AlertDescription className="text-green-800">
+                Your email has been verified successfully! Redirecting to home page...
+              </AlertDescription>
+            </Alert>
+          )}
+
           {fromPricing && (
             <Alert className="mb-4">
               <AlertDescription>
@@ -78,6 +96,9 @@ const Auth = () => {
             </TabsContent>
             <TabsContent value="register">
               <AuthForm mode="register" redirectToCheckout={fromPricing} selectedPlan={selectedPlan} />
+              <div className="mt-4 text-sm text-muted-foreground">
+                After registration, please check your email to verify your account. You'll need to click the verification link before you can log in.
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>
