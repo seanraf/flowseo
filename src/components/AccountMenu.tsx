@@ -1,27 +1,19 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { User, Settings, CreditCard, LogOut, UserPlus, LogIn } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useNavigate } from 'react-router-dom';
-import UserProfileForm from '@/components/UserProfileForm';
-import PasswordChangeForm from '@/components/PasswordChangeForm';
+import AuthenticatedMenu from '@/components/user/AuthenticatedMenu';
+import GuestMenu from '@/components/user/GuestMenu';
+import AvatarButton from '@/components/user/AvatarButton';
+import ProfileDialog from '@/components/user/ProfileDialog';
+import PasswordDialog from '@/components/user/PasswordDialog';
 
 const AccountMenu = () => {
   const { user, profile, signOut, subscriptionTier, checkSubscription } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -50,128 +42,47 @@ const AccountMenu = () => {
   };
   
   // Handle profile dialog close with proper refresh
-  const handleProfileDialogClose = (success = false) => {
-    setProfileDialogOpen(false);
-    
-    // Only refresh data if successful update
-    if (success) {
-      // Use setTimeout to avoid state update conflicts
-      setTimeout(() => {
-        checkSubscription().catch(error => {
-          console.error("Error refreshing profile data:", error);
-        });
-      }, 100);
-    }
-  };
-
-  const handleNavigateToSubscription = () => {
-    setDropdownOpen(false);
-    navigate('/subscription');
-  };
-
-  const handleNavigation = (path: string, tab?: string) => {
-    setDropdownOpen(false);
-    if (tab) {
-      navigate(`${path}?tab=${tab}`);
-    } else {
-      navigate(path);
-    }
+  const handleProfileSuccess = () => {
+    // Use setTimeout to avoid state update conflicts
+    setTimeout(() => {
+      checkSubscription().catch(error => {
+        console.error("Error refreshing profile data:", error);
+      });
+    }, 100);
   };
 
   return (
     <>
       <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                {user ? initials : '?'}
-              </AvatarFallback>
-            </Avatar>
-          </Button>
+          <AvatarButton initials={initials} isAuthenticated={!!user} />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           {user ? (
-            <>
-              <DropdownMenuLabel>
-                {user.email}
-                {subscriptionTier !== 'free' && (
-                  <span className="ml-2 inline-block px-2 py-0.5 text-xs rounded bg-primary text-primary-foreground">
-                    {subscriptionTier === 'limited' ? 'Limited' : 'Unlimited'}
-                  </span>
-                )}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => {
-                setDropdownOpen(false);
-                setTimeout(() => setProfileDialogOpen(true), 100);
-              }}>
-                <User className="mr-2 h-4 w-4" />
-                <span>Display Initials</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {
-                setDropdownOpen(false);
-                setTimeout(() => setPasswordDialogOpen(true), 100);
-              }}>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Change Password</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleNavigateToSubscription}>
-                <CreditCard className="mr-2 h-4 w-4" />
-                <span>Manage Subscription</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={signOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </>
+            <AuthenticatedMenu 
+              email={user.email || ''}
+              subscriptionTier={subscriptionTier}
+              onProfileClick={() => setProfileDialogOpen(true)}
+              onPasswordClick={() => setPasswordDialogOpen(true)}
+              onSignOut={signOut}
+              setDropdownOpen={setDropdownOpen}
+            />
           ) : (
-            <>
-              <DropdownMenuLabel>Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleNavigation('/auth')}>
-                <LogIn className="mr-2 h-4 w-4" />
-                <span>Login</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleNavigation('/auth', 'register')}>
-                <UserPlus className="mr-2 h-4 w-4" />
-                <span>Sign up</span>
-              </DropdownMenuItem>
-            </>
+            <GuestMenu setDropdownOpen={setDropdownOpen} />
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog 
-        open={profileDialogOpen} 
-        onOpenChange={(open) => {
-          if (!open) {
-            handleProfileDialogClose();
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Display Initials</DialogTitle>
-          </DialogHeader>
-          <UserProfileForm onSuccess={() => handleProfileDialogClose(true)} />
-        </DialogContent>
-      </Dialog>
+      <ProfileDialog 
+        isOpen={profileDialogOpen}
+        onOpenChange={setProfileDialogOpen}
+        onSuccess={handleProfileSuccess}
+      />
 
-      <Dialog 
-        open={passwordDialogOpen} 
-        onOpenChange={(open) => {
-          setPasswordDialogOpen(open);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Change Password</DialogTitle>
-          </DialogHeader>
-          <PasswordChangeForm onSuccess={() => setPasswordDialogOpen(false)} />
-        </DialogContent>
-      </Dialog>
+      <PasswordDialog
+        isOpen={passwordDialogOpen}
+        onOpenChange={setPasswordDialogOpen}
+      />
     </>
   );
 };
