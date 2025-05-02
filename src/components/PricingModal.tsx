@@ -19,7 +19,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, checkSubscription } = useAuth();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const showPricing = searchParams.get('showPricing') === 'true';
@@ -62,6 +62,8 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
       if (error) throw error;
       
       if (data.url) {
+        // Store the fact that we're in a checkout flow
+        localStorage.setItem('checkoutInProgress', 'true');
         window.location.href = data.url;
       } else {
         throw new Error("No checkout URL returned");
@@ -73,7 +75,6 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
         variant: 'destructive',
       });
       setLoading(false);
-    } finally {
       setConfirmOpen(false);
     }
   };

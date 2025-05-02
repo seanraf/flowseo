@@ -1,13 +1,23 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { XCircle, ArrowLeft } from 'lucide-react';
 import Logo from '@/components/Logo';
+import { useToast } from '@/components/ui/use-toast';
 
 const Cancel = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Show toast notification when the component mounts
+    toast({
+      title: "Subscription cancelled",
+      description: "Your subscription process was cancelled and you have not been charged.",
+    });
+  }, [toast]);
 
   const handleBack = () => {
     navigate('/');
