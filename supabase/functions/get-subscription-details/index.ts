@@ -44,12 +44,49 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // First check if we have subscription data in the subscribers table
+    const { data: subscriberData, error: subscriberError } = await supabaseClient
+      .from('subscribers')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('subscribed', true)
+      .maybeSingle();
+
+    logStep("Checked subscribers table", { 
+      hasData: !!subscriberData, 
+      error: subscriberError?.message || null
+    });
+
+    // If we have valid subscriber data and it's recent (updated within last day), use that
+    if (subscriberData && 
+        subscriberData.subscription_tier && 
+        subscriberData.subscribed && 
+        new Date(subscriberData.updated_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)) {
+      
+      logStep("Using cached subscription data from database", subscriberData);
+      
+      return new Response(JSON.stringify({
+        id: subscriberData.id,
+        status: "active",
+        tier: subscriberData.subscription_tier,
+        currentPeriodEnd: subscriberData.subscription_end,
+        cancelAtPeriodEnd: false, // Default as we don't store this
+        price: 0, // Default as we don't store this
+        currency: "usd" // Default as we don't store this
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    logStep("No recent subscriber data, checking Stripe directly");
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     
-    // Get customer information
+    // Get customer information from Stripe
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     if (customers.data.length === 0) {
-      logStep("No customer found");
+      logStep("No customer found in Stripe");
       return new Response(JSON.stringify(null), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -59,7 +96,7 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    // Get subscription information
+    // Get subscription information from Stripe
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: 'all',
@@ -68,7 +105,7 @@ serve(async (req) => {
     });
 
     if (subscriptions.data.length === 0) {
-      logStep("No subscription found");
+      logStep("No subscription found in Stripe");
       return new Response(JSON.stringify(null), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -76,9 +113,12 @@ serve(async (req) => {
     }
 
     const subscription = subscriptions.data[0];
-    logStep("Found subscription", { subscriptionId: subscription.id, status: subscription.status });
+    logStep("Found subscription in Stripe", { 
+      subscriptionId: subscription.id, 
+      status: subscription.status 
+    });
 
-    // Determine subscription tier
+    // Determine subscription tier based on price
     let tier = 'free';
     const priceId = subscription.items.data[0].price.id;
     const price = await stripe.prices.retrieve(priceId);
@@ -89,6 +129,21 @@ serve(async (req) => {
     } else {
       tier = 'unlimited';
     }
+
+    logStep("Determined tier from price", { amount, tier });
+
+    // Update the subscribers table with the latest information
+    await supabaseClient.from("subscribers").upsert({
+      email: user.email,
+      user_id: user.id,
+      stripe_customer_id: customerId,
+      subscribed: subscription.status === 'active',
+      subscription_tier: tier,
+      subscription_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+
+    logStep("Updated subscribers table with latest information");
 
     // Format response data
     const subscriptionDetails = {
@@ -109,7 +164,16 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR in get-subscription-details", { message: errorMessage });
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    
+    // Send detailed error information for troubleshooting
+    return new Response(JSON.stringify({ 
+      error: errorMessage,
+      timestamp: new Date().toISOString(),
+      details: {
+        message: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined
+      }
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

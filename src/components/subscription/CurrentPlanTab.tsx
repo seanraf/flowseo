@@ -1,10 +1,10 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { CreditCard } from 'lucide-react';
+import { CreditCard, RefreshCw } from 'lucide-react';
 import { PricingModal } from '@/components/PricingModal';
 import FeatureItem from './FeatureItem';
 
@@ -35,7 +35,17 @@ const CurrentPlanTab: React.FC<CurrentPlanTabProps> = ({
   cancelling,
   setActiveTab
 }) => {
-  const isFreeTier = subscriptionTier === 'free' || !subscriptionDetails;
+  // Determine the actual tier from both sources
+  // First check subscription details from API, then fall back to auth context
+  const actualTier = subscriptionDetails?.tier || subscriptionTier;
+  const isFreeTier = actualTier === 'free' || !subscriptionDetails;
+  
+  console.log('Current plan tab rendering with:', { 
+    subscriptionDetails, 
+    subscriptionTier, 
+    actualTier, 
+    isFreeTier 
+  });
 
   return (
     <Card>
@@ -65,7 +75,7 @@ const CurrentPlanTab: React.FC<CurrentPlanTabProps> = ({
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Current Plan</p>
                 <h3 className="text-2xl font-bold flex items-center gap-2">
-                  {subscriptionDetails?.tier === 'limited' ? 'Limited' : 'Unlimited'} Plan
+                  {actualTier === 'limited' ? 'Limited' : 'Unlimited'} Plan
                   <Badge variant={subscriptionDetails?.status === 'active' ? 'default' : 'outline'}>
                     {subscriptionDetails?.status === 'active' ? 'Active' : 'Inactive'}
                   </Badge>
@@ -79,7 +89,7 @@ const CurrentPlanTab: React.FC<CurrentPlanTabProps> = ({
               <div className="text-right">
                 <p className="text-sm font-medium text-muted-foreground">Price</p>
                 <p className="text-2xl font-bold">
-                  ${subscriptionDetails?.price || (subscriptionDetails?.tier === 'limited' ? '20' : '99')}/month
+                  ${subscriptionDetails?.price || (actualTier === 'limited' ? '20' : '99')}/month
                 </p>
               </div>
             </div>
@@ -99,7 +109,7 @@ const CurrentPlanTab: React.FC<CurrentPlanTabProps> = ({
             
             <div className="pt-4">
               <h4 className="font-medium mb-2">Plan Features</h4>
-              {subscriptionDetails?.tier === 'limited' ? (
+              {actualTier === 'limited' ? (
                 <ul className="space-y-2">
                   <FeatureItem feature="Unlimited Keyword Research" available={true} note="(with caching)" />
                   <FeatureItem feature="15 AI-Generated Articles" available={true} />

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -21,14 +22,14 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true }) => {
   };
   
   return (
-    <div className="flex items-center gap-2">
+    <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
       <TrendingUp className={`${iconSizeMap[size]} text-primary`} />
       {showText && (
         <span className={`${textSizeMap[size]} font-medium tracking-tight`}>
           FlowSEO
         </span>
       )}
-    </div>
+    </Link>
   );
 };
 
