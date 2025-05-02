@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -7,21 +7,22 @@ interface AvatarButtonProps {
   initials: string;
   isAuthenticated: boolean;
   imageUrl?: string;
-  onClick?: () => void; // Add onClick prop to handle click events
+  onClick?: () => void;
 }
 
-const AvatarButton: React.FC<AvatarButtonProps> = ({ 
+const AvatarButton = forwardRef<HTMLButtonElement, AvatarButtonProps>(({ 
   initials, 
   isAuthenticated,
   imageUrl,
   onClick
-}) => {
+}, ref) => {
   return (
     <Button 
+      ref={ref}
       variant="ghost" 
       size="icon" 
       className="h-8 w-8 rounded-full cursor-pointer" 
-      onClick={onClick} // Pass the onClick handler to the button
+      onClick={onClick}
     >
       <Avatar className="h-8 w-8">
         {imageUrl && <AvatarImage src={imageUrl} alt="User avatar" />}
@@ -31,6 +32,8 @@ const AvatarButton: React.FC<AvatarButtonProps> = ({
       </Avatar>
     </Button>
   );
-};
+});
+
+AvatarButton.displayName = 'AvatarButton';
 
 export default AvatarButton;

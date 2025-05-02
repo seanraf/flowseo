@@ -60,13 +60,12 @@ const AccountMenu = () => {
     <>
       <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
         <DropdownMenuTrigger asChild>
-          <div> {/* Wrapper div to ensure proper event handling */}
-            <AvatarButton 
-              initials={initials} 
-              isAuthenticated={!!user} 
-              onClick={handleToggleDropdown}
-            />
-          </div>
+          <AvatarButton 
+            initials={initials} 
+            isAuthenticated={!!user} 
+            onClick={handleToggleDropdown}
+            imageUrl={profile?.avatar_url}
+          />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           {user ? (
