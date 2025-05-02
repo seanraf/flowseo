@@ -15,7 +15,8 @@ const Auth = () => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const fromPricing = searchParams.get('from') === 'pricing';
-  const selectedPlan = searchParams.get('plan');
+  const planParam = searchParams.get('plan');
+  const selectedPlan = planParam === 'limited' || planParam === 'unlimited' ? planParam : undefined;
   const [defaultTab, setDefaultTab] = useState(fromPricing ? 'register' : 'login');
 
   const handleBack = () => {
@@ -73,10 +74,10 @@ const Auth = () => {
               <TabsTrigger value="register">Register</TabsTrigger>
             </TabsList>
             <TabsContent value="login">
-              <AuthForm mode="login" redirectToCheckout={fromPricing} selectedPlan={selectedPlan || undefined} />
+              <AuthForm mode="login" redirectToCheckout={fromPricing} selectedPlan={selectedPlan} />
             </TabsContent>
             <TabsContent value="register">
-              <AuthForm mode="register" redirectToCheckout={fromPricing} selectedPlan={selectedPlan || undefined} />
+              <AuthForm mode="register" redirectToCheckout={fromPricing} selectedPlan={selectedPlan} />
             </TabsContent>
           </Tabs>
         </CardContent>
