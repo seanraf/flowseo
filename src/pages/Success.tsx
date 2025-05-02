@@ -13,28 +13,43 @@ const Success = () => {
   const sessionId = searchParams.get('session_id');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [subscriptionDetails, setSubscriptionDetails] = useState<{
+    tier: string;
+    end_date?: string;
+  } | null>(null);
   const navigate = useNavigate();
-  const { user, checkSubscription } = useAuth();
+  const { user, checkSubscription, subscriptionTier } = useAuth();
 
   useEffect(() => {
     const verifySubscription = async () => {
       if (!user) {
-        // Wait a bit for auth to initialize if needed
-        setTimeout(() => {
-          if (!user) {
-            navigate('/');
-          }
-        }, 2000);
+        // Redirect to login if not authenticated
+        navigate('/auth', { replace: true });
         return;
       }
 
       try {
         // Refresh subscription status
         await checkSubscription();
+        
+        // Get detailed subscription information
+        const { data, error } = await supabase.functions.invoke('check-subscription', {
+          body: {}
+        });
+        
+        if (error) throw error;
+        
+        if (data?.subscribed) {
+          setSubscriptionDetails({
+            tier: data.subscription_tier,
+            end_date: data.subscription_end ? new Date(data.subscription_end).toLocaleDateString() : undefined
+          });
+        }
+        
         setLoading(false);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error verifying subscription:', err);
-        setError('Could not verify your subscription status. Please contact support.');
+        setError(err.message || 'Could not verify your subscription status. Please contact support.');
         setLoading(false);
       }
     };
@@ -43,7 +58,7 @@ const Success = () => {
   }, [user, navigate, sessionId, checkSubscription]);
 
   const handleContinue = () => {
-    navigate('/');
+    navigate('/', { replace: true });
   };
 
   return (
@@ -70,9 +85,22 @@ const Success = () => {
           ) : error ? (
             <div className="text-red-500">{error}</div>
           ) : (
-            <p>
-              You now have access to all premium features. Your new plan is active immediately.
-            </p>
+            <div className="space-y-4">
+              <p>
+                You now have access to all premium features with the{" "}
+                <span className="font-bold">
+                  {subscriptionDetails?.tier || subscriptionTier || "Premium"}
+                </span> plan.
+              </p>
+              {subscriptionDetails?.end_date && (
+                <p className="text-sm text-muted-foreground">
+                  Your current billing period ends on {subscriptionDetails.end_date}
+                </p>
+              )}
+              <p className="text-sm">
+                You can manage your subscription anytime through your account settings.
+              </p>
+            </div>
           )}
         </CardContent>
         <CardFooter className="flex justify-center pb-6">

@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@12.1.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,29 +31,36 @@ serve(async (req) => {
     logStep("Stripe key check", { keyExists: !!stripeKey, keyLength: stripeKey.length });
 
     // Parse the request body
-    const { plan, tempUserId } = await req.json();
-    logStep("Processing plan", { plan, tempUserId });
+    const { plan } = await req.json();
+    logStep("Processing plan", { plan });
 
-    let email = "";
-    let customerId = "";
-    let user = null;
-    
-    // Check if this is a temp user or logged-in user
-    if (tempUserId) {
-      // Use a temp email based on the tempUserId
-      email = `temp_${tempUserId}@flowseo.app`;
-      logStep("Using temp user", { tempUserId, email });
-    } else {
-      // Extract the token and get the user
-      const authHeader = req.headers.get("Authorization");
-      if (!authHeader) {
-        throw new Error("No authorization header provided");
-      }
-      
-      // We'll implement this later if needed
-      // For now, just use the temp user flow
-      logStep("No auth header or using temp user flow");
+    // Extract the token and get the user
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      throw new Error("Authentication required to subscribe");
     }
+    
+    // Initialize Supabase client with service role key
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+    
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError || !userData.user) {
+      throw new Error("Authentication failed. Please sign in before subscribing.");
+    }
+    
+    const user = userData.user;
+    const email = user.email;
+    
+    if (!email) {
+      throw new Error("User email not available. Please update your profile.");
+    }
+    
+    logStep("Authenticated user", { userId: user.id, email });
 
     // Initialize Stripe
     const stripe = new Stripe(stripeKey, {
@@ -87,7 +95,7 @@ serve(async (req) => {
       customer = await stripe.customers.create({
         email,
         metadata: {
-          tempUserId,
+          userId: user.id,
         },
       });
       logStep("Created new customer", { customerId: customer.id });
@@ -127,7 +135,7 @@ serve(async (req) => {
         cancel_url: `${origin}/cancel`,
         metadata: {
           plan,
-          tempUserId: tempUserId || "",
+          userId: user.id,
         },
       });
       
@@ -168,7 +176,7 @@ serve(async (req) => {
         cancel_url: `${origin}/cancel`,
         metadata: {
           plan,
-          tempUserId: tempUserId || "",
+          userId: user.id,
         },
       });
       

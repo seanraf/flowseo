@@ -18,13 +18,15 @@ const formSchema = z.object({
 
 interface AuthFormProps {
   mode: 'login' | 'register';
+  redirectToCheckout?: boolean;
+  selectedPlan?: 'limited' | 'unlimited';
 }
 
-export const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
+export const AuthForm: React.FC<AuthFormProps> = ({ mode, redirectToCheckout = false, selectedPlan }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { tempUser, claimTempUser } = useAuth();
+  const { tempUser, claimTempUser, checkSubscription } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,10 +52,21 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
           await claimTempUser(tempUser.id);
         }
 
+        await checkSubscription();
+
         toast({
           title: 'Registration successful',
-          description: 'Please check your email to verify your account.',
+          description: 'Your account has been created. You may need to verify your email.',
         });
+
+        if (redirectToCheckout && selectedPlan) {
+          // Wait briefly to ensure auth state updates
+          setTimeout(() => {
+            handleRedirectToCheckout(selectedPlan);
+          }, 1000);
+        } else {
+          navigate('/');
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: values.email,
@@ -61,9 +74,23 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
         });
 
         if (error) throw error;
+        
+        await checkSubscription();
+        
+        toast({
+          title: 'Login successful',
+          description: 'Welcome back!',
+        });
+        
+        if (redirectToCheckout && selectedPlan) {
+          // Wait briefly to ensure auth state updates
+          setTimeout(() => {
+            handleRedirectToCheckout(selectedPlan);
+          }, 1000);
+        } else {
+          navigate('/');
+        }
       }
-      
-      navigate('/');
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -72,6 +99,30 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRedirectToCheckout = async (plan: 'limited' | 'unlimited') => {
+    try {
+      // Open the pricing modal programmatically after login/signup
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { plan }
+      });
+
+      if (error) throw error;
+      
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create checkout session',
+        variant: 'destructive',
+      });
+      navigate('/');
     }
   };
 

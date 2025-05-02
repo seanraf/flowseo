@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,15 +20,22 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, tempUser } = useAuth();
+  const { user } = useAuth();
 
   const handleSubscribe = (plan: 'limited' | 'unlimited') => {
-    if (!user && !tempUser) {
-      navigate('/auth');
+    if (!user) {
+      // Redirect to auth page with a parameter indicating they came from pricing
+      navigate('/auth?from=pricing&plan=' + plan);
+      setOpen(false);
       return;
     }
     setSelectedPlan(plan);
     setConfirmOpen(true);
+  };
+
+  const handleSignUp = () => {
+    navigate('/auth?from=pricing');
+    setOpen(false);
   };
 
   const confirmSubscription = async () => {
@@ -36,10 +43,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
       setLoading(true);
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { 
-          plan: selectedPlan,
-          tempUserId: tempUser?.id 
-        }
+        body: { plan: selectedPlan }
       });
 
       if (error) throw error;
@@ -76,65 +80,78 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-              {/* Limited Plan */}
-              <div className="rounded-xl border bg-card text-card-foreground shadow relative overflow-hidden flex flex-col">
-                <div className="flex flex-col p-6 space-y-4 flex-1">
-                  <h3 className="text-xl font-bold">Limited Plan</h3>
-                  <div className="text-3xl font-bold">$20 <span className="text-sm font-normal text-muted-foreground">/month</span></div>
-                  <p className="text-sm text-muted-foreground">For Freelancers & Small Businesses</p>
+            {!user ? (
+              <div className="rounded-xl border bg-card text-card-foreground shadow p-6 text-center">
+                <LogIn className="h-12 w-12 mx-auto mb-4 text-primary" />
+                <h3 className="text-xl font-bold mb-2">Account Required</h3>
+                <p className="text-muted-foreground mb-6">
+                  You need to create an account or sign in before subscribing to a plan.
+                </p>
+                <Button onClick={handleSignUp} className="w-full md:w-auto">
+                  Sign Up or Login
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                {/* Limited Plan */}
+                <div className="rounded-xl border bg-card text-card-foreground shadow relative overflow-hidden flex flex-col">
+                  <div className="flex flex-col p-6 space-y-4 flex-1">
+                    <h3 className="text-xl font-bold">Limited Plan</h3>
+                    <div className="text-3xl font-bold">$20 <span className="text-sm font-normal text-muted-foreground">/month</span></div>
+                    <p className="text-sm text-muted-foreground">For Freelancers & Small Businesses</p>
+                    
+                    <div className="space-y-2 flex-1">
+                      <FeatureItem feature="Unlimited Keyword Research" available={true} note="(with caching)" />
+                      <FeatureItem feature="15 AI-Generated Articles" available={true} />
+                      <FeatureItem feature="3 Active Projects" available={true} />
+                      <FeatureItem feature="Archived Projects for Data Retention" available={true} />
+                      <FeatureItem feature="CSV Export of Keyword Lists" available={true} />
+                      <FeatureItem feature="Basic SEO Filtering & Competitor Analysis" available={true} />
+                    </div>
+                  </div>
                   
-                  <div className="space-y-2 flex-1">
-                    <FeatureItem feature="Unlimited Keyword Research" available={true} note="(with caching)" />
-                    <FeatureItem feature="15 AI-Generated Articles" available={true} />
-                    <FeatureItem feature="3 Active Projects" available={true} />
-                    <FeatureItem feature="Archived Projects for Data Retention" available={true} />
-                    <FeatureItem feature="CSV Export of Keyword Lists" available={true} />
-                    <FeatureItem feature="Basic SEO Filtering & Competitor Analysis" available={true} />
+                  <div className="p-6 pt-0 mt-auto">
+                    <Button 
+                      className="w-full" 
+                      onClick={() => handleSubscribe('limited')}
+                    >
+                      Subscribe
+                    </Button>
                   </div>
                 </div>
                 
-                <div className="p-6 pt-0 mt-auto">
-                  <Button 
-                    className="w-full" 
-                    onClick={() => handleSubscribe('limited')}
-                  >
-                    Subscribe
-                  </Button>
-                </div>
-              </div>
-              
-              {/* Unlimited Plan */}
-              <div className="rounded-xl border bg-card text-card-foreground shadow relative overflow-hidden flex flex-col">
-                <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl">
-                  POPULAR
-                </div>
-                <div className="flex flex-col p-6 space-y-4 flex-1">
-                  <h3 className="text-xl font-bold">Unlimited Plan</h3>
-                  <div className="text-3xl font-bold">$99 <span className="text-sm font-normal text-muted-foreground">/month</span></div>
-                  <p className="text-sm text-muted-foreground">For Agencies & Enterprises</p>
+                {/* Unlimited Plan */}
+                <div className="rounded-xl border bg-card text-card-foreground shadow relative overflow-hidden flex flex-col">
+                  <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl">
+                    POPULAR
+                  </div>
+                  <div className="flex flex-col p-6 space-y-4 flex-1">
+                    <h3 className="text-xl font-bold">Unlimited Plan</h3>
+                    <div className="text-3xl font-bold">$99 <span className="text-sm font-normal text-muted-foreground">/month</span></div>
+                    <p className="text-sm text-muted-foreground">For Agencies & Enterprises</p>
+                    
+                    <div className="space-y-2 flex-1">
+                      <FeatureItem feature="Unlimited Keyword Research" available={true} />
+                      <FeatureItem feature="Unlimited AI Content Generation" available={true} />
+                      <FeatureItem feature="Unlimited Active Projects" available={true} />
+                      <FeatureItem feature="Advanced Competitive Insights & SEO Outlines" available={true} />
+                      <FeatureItem feature="Priority Support" available={true} />
+                      <FeatureItem feature="CSV Export & CMS Integration" available={true} />
+                    </div>
+                  </div>
                   
-                  <div className="space-y-2 flex-1">
-                    <FeatureItem feature="Unlimited Keyword Research" available={true} />
-                    <FeatureItem feature="Unlimited AI Content Generation" available={true} />
-                    <FeatureItem feature="Unlimited Active Projects" available={true} />
-                    <FeatureItem feature="Advanced Competitive Insights & SEO Outlines" available={true} />
-                    <FeatureItem feature="Priority Support" available={true} />
-                    <FeatureItem feature="CSV Export & CMS Integration" available={true} />
+                  <div className="p-6 pt-0 mt-auto">
+                    <Button 
+                      className="w-full" 
+                      variant="default"
+                      onClick={() => handleSubscribe('unlimited')}
+                    >
+                      Subscribe
+                    </Button>
                   </div>
                 </div>
-                
-                <div className="p-6 pt-0 mt-auto">
-                  <Button 
-                    className="w-full" 
-                    variant="default"
-                    onClick={() => handleSubscribe('unlimited')}
-                  >
-                    Subscribe
-                  </Button>
-                </div>
               </div>
-            </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
