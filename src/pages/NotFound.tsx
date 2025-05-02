@@ -16,12 +16,7 @@ const NotFound = () => {
   }, [location.pathname]);
 
   const goBack = () => {
-    // If we came from subscription page, go back there
-    if (location.pathname.includes("subscription")) {
-      navigate("/subscription");
-    } else {
-      navigate("/");
-    }
+    navigate("/");
   };
 
   return (

@@ -13,7 +13,7 @@ import ProfileDialog from '@/components/user/ProfileDialog';
 import PasswordDialog from '@/components/user/PasswordDialog';
 
 const AccountMenu = () => {
-  const { user, profile, signOut, subscriptionTier, checkSubscription } = useAuth();
+  const { user, profile, signOut, subscriptionTier, checkSubscription, openCustomerPortal } = useAuth();
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -76,6 +76,7 @@ const AccountMenu = () => {
               onPasswordClick={() => setPasswordDialogOpen(true)}
               onSignOut={signOut}
               setDropdownOpen={setDropdownOpen}
+              openCustomerPortal={openCustomerPortal}
             />
           ) : (
             <GuestMenu setDropdownOpen={setDropdownOpen} />

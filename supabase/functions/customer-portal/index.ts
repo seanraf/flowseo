@@ -63,19 +63,35 @@ serve(async (req) => {
     // Get request origin for the return URL
     const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
 
-    // Create a simple billing portal session configuration
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: `${origin}/subscription`,
-      // The default configuration should be set up in the Stripe dashboard
-    });
+    try {
+      // Create a billing portal session
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${origin}/`,
+      });
 
-    logStep("Created customer portal session", { sessionId: portalSession.id });
+      logStep("Created customer portal session", { sessionId: portalSession.id });
 
-    return new Response(JSON.stringify({ url: portalSession.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+      return new Response(JSON.stringify({ url: portalSession.url }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } catch (stripeError: any) {
+      // If there's an error because the portal configuration is not set up
+      if (stripeError.message && stripeError.message.includes("configuration")) {
+        logStep("Portal configuration error", { message: stripeError.message });
+        return new Response(JSON.stringify({ 
+          error: "Stripe Customer Portal not configured. Please set up your customer portal in the Stripe dashboard.",
+          redirectToPricing: true 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      
+      // Re-throw other errors
+      throw stripeError;
+    }
   } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR in customer-portal", { message: errorMessage });

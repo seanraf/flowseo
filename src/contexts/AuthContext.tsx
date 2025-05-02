@@ -3,6 +3,7 @@ import React, { createContext, useState, useEffect, useContext, useCallback } fr
 import { useAuthState } from '@/hooks/useAuthState';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/components/ui/use-toast';
 
 interface AuthContextProps {
   user: any;
@@ -24,6 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [subscriptionTier, setSubscriptionTier] = useState<'free' | 'limited' | 'unlimited'>('free');
   const [checkingSubscription, setCheckingSubscription] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Use useCallback to memoize the checkSubscription function
   const checkSubscription = useCallback(async () => {
@@ -59,6 +61,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const openCustomerPortal = async () => {
     try {
+      if (!user) {
+        navigate('/auth?from=subscription', { replace: true });
+        return;
+      }
+      
       const { data, error } = await supabase.functions.invoke('customer-portal', {
         body: {}
       });
@@ -74,6 +81,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error: any) {
       console.error("Error opening customer portal:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Could not open subscription management. Please try again later.",
+        variant: "destructive",
+      });
       throw error;
     }
   };

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,9 +19,8 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
-  const { user, checkSubscription } = useAuth();
   const location = useLocation();
+  const { user, checkSubscription } = useAuth();
   const searchParams = new URLSearchParams(location.search);
   const showPricing = searchParams.get('showPricing') === 'true';
 
@@ -38,8 +37,8 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
 
   const handleSubscribe = (plan: 'limited' | 'unlimited') => {
     if (!user) {
-      // Redirect to auth page with a parameter indicating they came from pricing
-      navigate('/auth?from=pricing&plan=' + plan);
+      // Navigate to auth page with a parameter indicating they came from pricing
+      window.location.href = `/auth?from=pricing&plan=${plan}`;
       setOpen(false);
       return;
     }
@@ -48,7 +47,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
   };
 
   const handleSignUp = () => {
-    navigate('/auth?from=pricing&tab=register');
+    window.location.href = '/auth?from=pricing&tab=register';
     setOpen(false);
   };
 

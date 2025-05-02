@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { User, Settings, CreditCard, LogOut } from 'lucide-react';
 import {
   DropdownMenuItem,
@@ -15,6 +14,7 @@ interface AuthenticatedMenuProps {
   onPasswordClick: () => void;
   onSignOut: () => Promise<void>;
   setDropdownOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  openCustomerPortal: () => Promise<void>;
 }
 
 const AuthenticatedMenu: React.FC<AuthenticatedMenuProps> = ({
@@ -23,13 +23,16 @@ const AuthenticatedMenu: React.FC<AuthenticatedMenuProps> = ({
   onProfileClick,
   onPasswordClick,
   onSignOut,
-  setDropdownOpen
+  setDropdownOpen,
+  openCustomerPortal
 }) => {
-  const navigate = useNavigate();
-
-  const handleNavigateToSubscription = () => {
+  const handleManageSubscription = async () => {
     setDropdownOpen(false);
-    navigate('/subscription');
+    try {
+      await openCustomerPortal();
+    } catch (error) {
+      console.error("Failed to open customer portal:", error);
+    }
   };
 
   return (
@@ -57,7 +60,7 @@ const AuthenticatedMenu: React.FC<AuthenticatedMenuProps> = ({
         <Settings className="mr-2 h-4 w-4" />
         <span>Change Password</span>
       </DropdownMenuItem>
-      <DropdownMenuItem onClick={handleNavigateToSubscription}>
+      <DropdownMenuItem onClick={handleManageSubscription}>
         <CreditCard className="mr-2 h-4 w-4" />
         <span>Manage Subscription</span>
       </DropdownMenuItem>
