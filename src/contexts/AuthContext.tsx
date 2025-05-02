@@ -13,7 +13,7 @@ interface AuthContextProps {
   createTempUser: () => Promise<any>;
   claimTempUser: (tempUserId: string) => Promise<void>;
   subscriptionTier: 'free' | 'limited' | 'unlimited';
-  checkSubscription: () => Promise<void>;
+  checkSubscription: () => Promise<any>;
   openCustomerPortal: () => Promise<void>;
 }
 
@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkSubscription = useCallback(async () => {
     if (!user) {
       setSubscriptionTier('free');
-      return;
+      return { subscribed: false, subscription_tier: 'free' };
     }
     
     setCheckingSubscription(true);

@@ -24,12 +24,21 @@ const Success = () => {
         
         // Refresh subscription status - try up to 3 times with increasing delays
         // This helps in case Stripe needs more time to update the status
-        await checkSubscription();
+        const result = await checkSubscription();
         
-        toast({
-          title: "Subscription activated",
-          description: "Thank you for your subscription! Your account has been upgraded.",
-        });
+        if (result?.subscribed || result?.subscription_tier) {
+          toast({
+            title: "Subscription activated",
+            description: `Thank you for your subscription! Your account has been upgraded to ${result.subscription_tier || 'premium'}.`,
+          });
+        } else {
+          // If we haven't tried too many times yet, retry with increasing delay
+          if (attempts < 3) {
+            setAttempts(prev => prev + 1);
+            setTimeout(() => updateSubscription(), 2000 * (attempts + 1));
+            return;
+          }
+        }
       } catch (error) {
         console.error("Error updating subscription status:", error);
         

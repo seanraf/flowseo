@@ -34,14 +34,13 @@ const Index = () => {
         await new Promise(r => setTimeout(r, 1000));
         // Force refresh subscription status
         try {
-          const result = await checkSubscription();
-          console.log("Subscription status refreshed:", result);
+          await checkSubscription();
           
           // If subscription is active, show a toast notification
-          if (result?.subscribed) {
+          if (subscriptionTier === 'unlimited' || subscriptionTier === 'limited') {
             toast({
               title: "Subscription Active",
-              description: `Your ${result.subscription_tier} subscription is active.`,
+              description: `Your ${subscriptionTier} subscription is active.`,
             });
           }
         } catch (e) {
@@ -63,7 +62,7 @@ const Index = () => {
     if (!isLoading) {
       initPage();
     }
-  }, [isLoading, checkSubscription, toast]);
+  }, [isLoading, checkSubscription, toast, subscriptionTier]);
 
   // Show a toast when subscription tier changes to unlimited
   useEffect(() => {
