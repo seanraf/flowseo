@@ -17,10 +17,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useNavigate } from 'react-router-dom';
 import UserProfileForm from '@/components/UserProfileForm';
 import PasswordChangeForm from '@/components/PasswordChangeForm';
-import { supabase } from '@/integrations/supabase/client';
 
 const AccountMenu = () => {
-  const { user, profile, signOut, subscriptionTier, openCustomerPortal, checkSubscription } = useAuth();
+  const { user, profile, signOut, subscriptionTier, checkSubscription } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
@@ -65,42 +64,9 @@ const AccountMenu = () => {
     }
   };
 
-  const handleOpenCustomerPortal = async () => {
-    try {
-      toast({
-        title: "Loading",
-        description: "Opening customer portal...",
-      });
-      
-      try {
-        await openCustomerPortal();
-      } catch (error) {
-        console.log("Failed with context function, trying direct function call", error);
-        
-        const { data, error: fnError } = await supabase.functions.invoke('customer-portal', {
-          body: {}
-        });
-        
-        if (fnError) {
-          throw fnError;
-        }
-        
-        if (data.redirectToPricing) {
-          navigate('/?showPricing=true');
-        } else if (data.url) {
-          window.location.href = data.url;
-        } else if (data.error) {
-          throw new Error(data.error);
-        }
-      }
-    } catch (error: any) {
-      console.error("Customer portal error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to open customer portal. Please try again later.",
-        variant: "destructive"
-      });
-    }
+  const handleNavigateToSubscription = () => {
+    setDropdownOpen(false);
+    navigate('/subscription');
   };
 
   const handleNavigation = (path: string, tab?: string) => {
@@ -150,9 +116,9 @@ const AccountMenu = () => {
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Change Password</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleOpenCustomerPortal}>
+              <DropdownMenuItem onClick={handleNavigateToSubscription}>
                 <CreditCard className="mr-2 h-4 w-4" />
-                <span>Subscription</span>
+                <span>Manage Subscription</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut}>

@@ -7,6 +7,7 @@ import Auth from "./pages/Auth";
 import Success from "./pages/Success";
 import Cancel from "./pages/Cancel";
 import NotFound from "./pages/NotFound";
+import Subscription from "./pages/Subscription";
 import LoadingScreen from "./components/LoadingScreen";
 
 const AppRoutes = () => {
@@ -31,6 +32,7 @@ const AppRoutes = () => {
         <Route path="/auth" element={<Auth />} />
         <Route path="/success" element={<Success />} />
         <Route path="/cancel" element={<Cancel />} />
+        <Route path="/subscription" element={<Subscription />} />
         <Route path="/" element={<Index />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
