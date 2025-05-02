@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,6 +31,7 @@ const Subscription = () => {
   const [error, setError] = useState<string | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user, subscriptionTier, checkSubscription } = useAuth();
   const navigate = useNavigate();
 
@@ -72,6 +72,10 @@ const Subscription = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
   };
 
   const handleCancelSubscription = async () => {
@@ -121,7 +125,10 @@ const Subscription = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header 
+        toggleSidebar={toggleSidebar} 
+        activeConversationTitle={null} 
+      />
       
       <div className="container max-w-4xl py-8">
         <h1 className="text-3xl font-bold mb-6">Subscription Management</h1>
@@ -149,7 +156,6 @@ const Subscription = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Current Plan Tab */}
           <TabsContent value="current-plan">
             <Card>
               <CardHeader>
@@ -254,7 +260,6 @@ const Subscription = () => {
             </Card>
           </TabsContent>
 
-          {/* Change Plan Tab */}
           <TabsContent value="change-plan">
             <Card>
               <CardHeader>
@@ -328,7 +333,6 @@ const Subscription = () => {
             </Card>
           </TabsContent>
 
-          {/* Billing History Tab */}
           <TabsContent value="billing-history">
             <Card>
               <CardHeader>
