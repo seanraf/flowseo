@@ -63,12 +63,12 @@ serve(async (req) => {
     let productDetails;
     if (plan === "limited") {
       productDetails = {
-        productId: "prod_limited", // Replace with your actual product ID
+        productId: "prod_SBvI46y2KqRMr2", // User's test product ID
         plan: "limited"
       };
     } else if (plan === "unlimited") {
       productDetails = {
-        productId: "prod_unlimited", // Replace with your actual product ID
+        productId: "prod_SBvI4ATCgacOfn", // User's test product ID
         plan: "unlimited"
       };
     } else {
@@ -96,22 +96,23 @@ serve(async (req) => {
     // Get origin for success/cancel URLs
     const origin = req.headers.get("origin") || "http://localhost:3000";
 
-    // Create a checkout session using a price lookup instead of hardcoded product ID
+    // Create a checkout session using the specified product ID
     let session;
     try {
-      // First try to list prices for the product
+      // First try to get prices for the specific product
       const prices = await stripe.prices.list({
+        product: productDetails.productId,
         active: true,
         limit: 1,
-        expand: ["data.product"],
       });
 
       if (prices.data.length === 0) {
-        throw new Error("No active prices found in your Stripe account");
+        throw new Error(`No active prices found for product ${productDetails.productId}`);
       }
 
-      // Use the first active price
+      // Use the price associated with the product
       const price = prices.data[0];
+      logStep("Found price for product", { priceId: price.id, productId: productDetails.productId });
       
       session = await stripe.checkout.sessions.create({
         customer: customer.id,
@@ -139,6 +140,13 @@ serve(async (req) => {
       logStep(`Error creating checkout session: ${error.message}`);
       
       // Fallback to creating a session with a simple price
+      const pricingInfo = {
+        limited: { amount: 2000, name: "Limited Plan" },
+        unlimited: { amount: 9900, name: "Unlimited Plan" }
+      };
+      
+      const planInfo = pricingInfo[plan as keyof typeof pricingInfo];
+      
       session = await stripe.checkout.sessions.create({
         customer: customer.id,
         line_items: [
@@ -146,9 +154,10 @@ serve(async (req) => {
             price_data: {
               currency: "usd",
               product_data: { 
-                name: plan === "limited" ? "Limited Plan" : "Unlimited Plan" 
+                name: planInfo.name,
+                id: productDetails.productId,
               },
-              unit_amount: plan === "limited" ? 999 : 1999,
+              unit_amount: planInfo.amount,
               recurring: { interval: "month" },
             },
             quantity: 1,

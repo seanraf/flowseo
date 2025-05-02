@@ -50,7 +50,6 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { 
       apiVersion: "2023-10-16",
-      // Force using test mode regardless of the key used
       typescript: true 
     });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });

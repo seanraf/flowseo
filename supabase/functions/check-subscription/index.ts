@@ -52,7 +52,6 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { 
       apiVersion: "2023-10-16",
-      // Force using test mode regardless of the key used
       typescript: true
     });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -91,18 +90,32 @@ serve(async (req) => {
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
       
-      // Determine subscription tier based on price amount
-      const priceId = subscription.items.data[0].price.id;
-      const price = await stripe.prices.retrieve(priceId);
-      const amount = price.unit_amount || 0;
-      
-      if (amount <= 2000) {
+      // Determine subscription tier based on product ID
+      try {
+        const priceId = subscription.items.data[0].price.id;
+        const price = await stripe.prices.retrieve(priceId);
+        const productId = price.product as string;
+        
+        if (productId === "prod_SBvI46y2KqRMr2") {
+          subscriptionTier = "limited";
+        } else if (productId === "prod_SBvI4ATCgacOfn") {
+          subscriptionTier = "unlimited";
+        } else {
+          // Fallback to determining by price if product ID doesn't match
+          const amount = price.unit_amount || 0;
+          if (amount <= 2000) {
+            subscriptionTier = "limited";
+          } else {
+            subscriptionTier = "unlimited";
+          }
+        }
+        
+        logStep("Determined subscription tier", { priceId, productId, subscriptionTier });
+      } catch (error) {
+        logStep("Error determining subscription tier", { error: error.message });
+        // Fallback
         subscriptionTier = "limited";
-      } else {
-        subscriptionTier = "unlimited";
       }
-      
-      logStep("Determined subscription tier", { priceId, amount, subscriptionTier });
     } else {
       logStep("No active subscription found");
     }
