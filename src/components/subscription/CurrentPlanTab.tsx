@@ -39,12 +39,14 @@ const CurrentPlanTab: React.FC<CurrentPlanTabProps> = ({
   // First check subscription details from API, then fall back to auth context
   const actualTier = subscriptionDetails?.tier || subscriptionTier;
   const isFreeTier = actualTier === 'free' || !subscriptionDetails;
+  const isCancelled = subscriptionDetails?.cancelAtPeriodEnd || false;
   
   console.log('Current plan tab rendering with:', { 
     subscriptionDetails, 
     subscriptionTier, 
     actualTier, 
-    isFreeTier 
+    isFreeTier,
+    isCancelled
   });
 
   return (
@@ -79,7 +81,7 @@ const CurrentPlanTab: React.FC<CurrentPlanTabProps> = ({
                   <Badge variant={subscriptionDetails?.status === 'active' ? 'default' : 'outline'}>
                     {subscriptionDetails?.status === 'active' ? 'Active' : 'Inactive'}
                   </Badge>
-                  {subscriptionDetails?.cancelAtPeriodEnd && (
+                  {isCancelled && (
                     <Badge variant="outline" className="text-destructive border-destructive">
                       Cancels at period end
                     </Badge>
@@ -103,6 +105,11 @@ const CurrentPlanTab: React.FC<CurrentPlanTabProps> = ({
                   formatDate(subscriptionDetails.currentPeriodEnd) : 
                   'Not available'}
               </p>
+              {isCancelled && (
+                <p className="text-sm text-destructive mt-1">
+                  Your subscription will be canceled at the end of the current period.
+                </p>
+              )}
             </div>
             
             <Separator />
@@ -138,9 +145,9 @@ const CurrentPlanTab: React.FC<CurrentPlanTabProps> = ({
             <Button 
               variant="outline" 
               onClick={() => setCancelDialogOpen(true)}
-              disabled={subscriptionDetails?.cancelAtPeriodEnd || cancelling}
+              disabled={isCancelled || cancelling}
             >
-              {subscriptionDetails?.cancelAtPeriodEnd ? 'Scheduled to Cancel' : 'Cancel Subscription'}
+              {isCancelled ? 'Scheduled to Cancel' : 'Cancel Subscription'}
             </Button>
             <Button onClick={() => setActiveTab('change-plan')}>
               Change Plan

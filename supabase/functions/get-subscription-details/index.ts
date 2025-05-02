@@ -71,7 +71,7 @@ serve(async (req) => {
         tier: subscriberData.subscription_tier,
         currentPeriodEnd: subscriberData.subscription_end,
         cancelAtPeriodEnd: false, // Default as we don't store this
-        price: 0, // Default as we don't store this
+        price: subscriberData.subscription_tier === 'limited' ? 20 : 99,
         currency: "usd" // Default as we don't store this
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -115,7 +115,8 @@ serve(async (req) => {
     const subscription = subscriptions.data[0];
     logStep("Found subscription in Stripe", { 
       subscriptionId: subscription.id, 
-      status: subscription.status 
+      status: subscription.status,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end
     });
 
     // Determine subscription tier based on price

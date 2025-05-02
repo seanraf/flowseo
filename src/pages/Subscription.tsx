@@ -27,8 +27,10 @@ const Subscription = () => {
     loading,
     error,
     cancelling,
+    changingPlan,
     fetchSubscriptionDetails,
     handleCancelSubscription,
+    handleChangePlan,
     formatDate,
     user,
     navigate
@@ -122,7 +124,12 @@ const Subscription = () => {
           </TabsContent>
 
           <TabsContent value="change-plan">
-            <ChangePlanTab subscriptionTier={subscriptionTier} />
+            <ChangePlanTab 
+              subscriptionTier={subscriptionTier} 
+              onChangePlan={handleChangePlan}
+              changingPlan={changingPlan}
+              cancelAtPeriodEnd={subscriptionDetails?.cancelAtPeriodEnd}
+            />
           </TabsContent>
 
           <TabsContent value="billing-history">

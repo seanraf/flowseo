@@ -10,5 +10,11 @@ verify_jwt = false
 [functions.check-subscription]
 verify_jwt = true
 
+[functions.cancel-subscription]
+verify_jwt = true
+
 [functions.customer-portal]
+verify_jwt = true
+
+[functions.get-subscription-details]
 verify_jwt = true

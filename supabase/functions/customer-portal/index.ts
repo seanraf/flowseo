@@ -23,10 +23,6 @@ serve(async (req) => {
     logStep("Function started");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    
-    // Log for debugging
-    logStep("Stripe key check", { keyExists: !!stripeKey, keyLength: stripeKey ? stripeKey.length : 0 });
-    
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     logStep("Stripe key verified");
 
@@ -48,75 +44,36 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const stripe = new Stripe(stripeKey, { 
-      apiVersion: "2023-10-16",
-      typescript: true 
-    });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     
-    try {
-      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-      logStep("Checking for existing customer", { customerCount: customers.data.length });
-      
-      if (customers.data.length === 0) {
-        // Create a new customer if none exists
-        logStep("No customer found, creating new customer");
-        const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
-        
-        logStep("Redirecting to pricing page for new subscription");
-        return new Response(JSON.stringify({ 
-          redirectToPricing: true,
-          url: `${origin}/?showPricing=true` 
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
-      }
-      
-      const customerId = customers.data[0].id;
-      logStep("Found Stripe customer", { customerId });
-
-      // Check if the customer has any subscriptions
-      const subscriptions = await stripe.subscriptions.list({
-        customer: customerId,
-        limit: 1,
-      });
-      
-      if (subscriptions.data.length === 0) {
-        logStep("No subscriptions found, redirecting to pricing");
-        const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
-        return new Response(JSON.stringify({ 
-          redirectToPricing: true,
-          url: `${origin}/?showPricing=true` 
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
-      }
-      
-      const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
-      const portalSession = await stripe.billingPortal.sessions.create({
-        customer: customerId,
-        return_url: `${origin}/`,
-      });
-      logStep("Customer portal session created", { sessionId: portalSession.id, url: portalSession.url });
-
-      return new Response(JSON.stringify({ url: portalSession.url }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    } catch (stripeError: any) {
-      logStep("Stripe error", { message: stripeError.message });
-      // If there's an error with Stripe, redirect to pricing page
-      const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
-      return new Response(JSON.stringify({ 
-        error: stripeError.message,
-        redirectToPricing: true,
-        url: `${origin}/?showPricing=true` 
-      }), {
+    // Get customer information
+    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    if (customers.data.length === 0) {
+      logStep("No Stripe customer found for this user");
+      return new Response(JSON.stringify({ redirectToPricing: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
+
+    const customerId = customers.data[0].id;
+    logStep("Found Stripe customer", { customerId });
+
+    // Get request origin for the return URL
+    const origin = req.headers.get("origin") || "https://pktikklryhhemfidupor.lovable.app";
+
+    // Create Stripe customer portal session
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${origin}/subscription`,
+    });
+
+    logStep("Created customer portal session", { sessionId: portalSession.id });
+
+    return new Response(JSON.stringify({ url: portalSession.url }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR in customer-portal", { message: errorMessage });

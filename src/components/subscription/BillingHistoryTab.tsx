@@ -1,9 +1,12 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CreditCard } from 'lucide-react';
+import { CreditCard, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface BillingHistoryTabProps {
   isFreeTier: boolean;
@@ -11,6 +14,30 @@ interface BillingHistoryTabProps {
 }
 
 const BillingHistoryTab: React.FC<BillingHistoryTabProps> = ({ isFreeTier, subscriptionTier }) => {
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const { openCustomerPortal } = useAuth();
+
+  const handleManagePaymentMethods = async () => {
+    if (isFreeTier) {
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      await openCustomerPortal();
+    } catch (error: any) {
+      console.error("Failed to open customer portal:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to open customer portal. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -30,12 +57,28 @@ const BillingHistoryTab: React.FC<BillingHistoryTabProps> = ({ isFreeTier, subsc
                 <div className="flex items-center">
                   <CreditCard className="h-5 w-5 mr-3" />
                   <div>
-                    <p className="font-medium">Card ending in •••• 1234</p>
-                    <p className="text-sm text-muted-foreground">Expires 09/2025</p>
+                    <p className="font-medium">Credit Card</p>
+                    <p className="text-sm text-muted-foreground">
+                      To view card details, manage or update payment methods, click the button below.
+                    </p>
                   </div>
                 </div>
                 <div>
-                  <Button variant="ghost" size="sm">Update</Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={handleManagePaymentMethods}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      'Manage Payment Methods'
+                    )}
+                  </Button>
                 </div>
               </div>
             )}
@@ -48,36 +91,24 @@ const BillingHistoryTab: React.FC<BillingHistoryTabProps> = ({ isFreeTier, subsc
             {isFreeTier ? (
               <p className="text-muted-foreground">No billing history available.</p>
             ) : (
-              <div className="border rounded-md overflow-hidden">
-                <table className="min-w-full divide-y divide-border">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Amount</th>
-                      <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Receipt</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-background divide-y divide-border">
-                    <tr>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">May 1, 2025</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">{subscriptionTier === 'limited' ? 'Limited' : 'Unlimited'} Plan Subscription</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">${subscriptionTier === 'limited' ? '20.00' : '99.00'}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-right">
-                        <Button variant="link" size="sm">View</Button>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">April 1, 2025</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">{subscriptionTier === 'limited' ? 'Limited' : 'Unlimited'} Plan Subscription</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">${subscriptionTier === 'limited' ? '20.00' : '99.00'}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-right">
-                        <Button variant="link" size="sm">View</Button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <p className="text-sm text-muted-foreground mb-4">
+                  To view your complete billing history and download invoices, please visit the Customer Portal.
+                </p>
+                <Button 
+                  onClick={handleManagePaymentMethods}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    'View Billing History'
+                  )}
+                </Button>
+              </>
             )}
           </div>
         </div>

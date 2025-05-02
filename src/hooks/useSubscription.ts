@@ -20,6 +20,7 @@ export const useSubscription = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [changingPlan, setChangingPlan] = useState(false);
   const { user, checkSubscription, subscriptionTier } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -107,9 +108,17 @@ export const useSubscription = () => {
         description: "Your subscription will remain active until the end of the current billing period.",
       });
       
-      // Refresh subscription details
+      // Update subscription details with cancelAtPeriodEnd flag
+      if (subscriptionDetails && data.success) {
+        setSubscriptionDetails({
+          ...subscriptionDetails,
+          cancelAtPeriodEnd: data.cancelAtPeriodEnd,
+          currentPeriodEnd: data.currentPeriodEnd || subscriptionDetails.currentPeriodEnd
+        });
+      }
+      
+      // Refresh subscription details from auth context
       await checkSubscription();
-      await fetchSubscriptionDetails();
     } catch (err: any) {
       console.error("Failed to cancel subscription:", err);
       toast({
@@ -119,6 +128,34 @@ export const useSubscription = () => {
       });
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleChangePlan = async (plan: 'limited' | 'unlimited') => {
+    setChangingPlan(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { plan }
+      });
+      
+      if (error) throw new Error(error.message);
+      
+      if (data.url) {
+        // Store the fact that we're in a checkout flow
+        localStorage.setItem('checkoutInProgress', 'true');
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (err: any) {
+      console.error("Failed to initiate plan change:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to change plan. Please try again later.",
+        variant: "destructive",
+      });
+      setChangingPlan(false);
     }
   };
 
@@ -140,9 +177,12 @@ export const useSubscription = () => {
     loading,
     error,
     cancelling,
+    changingPlan,
     setCancelling,
+    setChangingPlan,
     fetchSubscriptionDetails,
     handleCancelSubscription,
+    handleChangePlan,
     formatDate,
     user,
     navigate

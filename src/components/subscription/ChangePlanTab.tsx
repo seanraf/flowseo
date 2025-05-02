@@ -3,18 +3,33 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import FeatureItem from './FeatureItem';
+import { Loader2 } from 'lucide-react';
 
 interface ChangePlanTabProps {
   subscriptionTier: 'free' | 'limited' | 'unlimited';
+  onChangePlan: (plan: 'limited' | 'unlimited') => Promise<void>;
+  changingPlan: boolean;
+  cancelAtPeriodEnd?: boolean;
 }
 
-const ChangePlanTab: React.FC<ChangePlanTabProps> = ({ subscriptionTier }) => {
+const ChangePlanTab: React.FC<ChangePlanTabProps> = ({ 
+  subscriptionTier, 
+  onChangePlan, 
+  changingPlan,
+  cancelAtPeriodEnd 
+}) => {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Choose a New Plan</CardTitle>
         <CardDescription>
           Change your subscription plan to better suit your needs
+          {cancelAtPeriodEnd && (
+            <p className="mt-2 text-sm text-amber-500">
+              Note: Your subscription is scheduled to cancel at the end of the billing period.
+              Changing your plan will create a new subscription.
+            </p>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -39,10 +54,16 @@ const ChangePlanTab: React.FC<ChangePlanTabProps> = ({ subscriptionTier }) => {
             <div className="p-6 pt-0 mt-auto">
               <Button 
                 className="w-full" 
-                disabled={subscriptionTier === 'limited'}
+                disabled={subscriptionTier === 'limited' || changingPlan}
                 variant={subscriptionTier === 'limited' ? "outline" : "default"}
+                onClick={() => onChangePlan('limited')}
               >
-                {subscriptionTier === 'limited' ? 'Current Plan' : 'Switch to Limited'}
+                {changingPlan ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing
+                  </>
+                ) : subscriptionTier === 'limited' ? 'Current Plan' : 'Switch to Limited'}
               </Button>
             </div>
           </div>
@@ -71,9 +92,15 @@ const ChangePlanTab: React.FC<ChangePlanTabProps> = ({ subscriptionTier }) => {
               <Button 
                 className="w-full" 
                 variant={subscriptionTier === 'unlimited' ? "outline" : "default"}
-                disabled={subscriptionTier === 'unlimited'}
+                disabled={subscriptionTier === 'unlimited' || changingPlan}
+                onClick={() => onChangePlan('unlimited')}
               >
-                {subscriptionTier === 'unlimited' ? 'Current Plan' : 'Switch to Unlimited'}
+                {changingPlan ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing
+                  </>
+                ) : subscriptionTier === 'unlimited' ? 'Current Plan' : 'Switch to Unlimited'}
               </Button>
             </div>
           </div>

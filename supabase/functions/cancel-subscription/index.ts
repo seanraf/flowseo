@@ -80,7 +80,10 @@ serve(async (req) => {
       updatedSubscription = await stripe.subscriptions.update(subscription.id, {
         cancel_at_period_end: true
       });
-      logStep("Subscription marked to cancel at period end", { subscriptionId: subscription.id });
+      logStep("Subscription marked to cancel at period end", { 
+        subscriptionId: subscription.id,
+        cancelAtPeriodEnd: updatedSubscription.cancel_at_period_end
+      });
     } else {
       // Cancel immediately
       updatedSubscription = await stripe.subscriptions.cancel(subscription.id);
@@ -88,16 +91,32 @@ serve(async (req) => {
     }
 
     // Update subscription status in our database
+    const subscriptionEnd = new Date((updatedSubscription.current_period_end || 0) * 1000).toISOString();
+    
     const { error: updateError } = await supabaseClient.from('subscribers').update({
-      subscribed: true, // Still active until period end if cancelAtPeriodEnd is true
+      subscribed: cancelAtPeriodEnd, // Still true until period ends if cancelAtPeriodEnd is true
+      subscription_end: subscriptionEnd,
+      // Store cancel_at_period_end flag from Stripe
+      subscription_tier: subscription.items.data[0].plan.nickname?.toLowerCase() || 
+                        (subscription.items.data[0].price.unit_amount || 0) <= 2000 ? 'limited' : 'unlimited',
       updated_at: new Date().toISOString()
     }).eq('email', user.email);
     
     if (updateError) {
       logStep("Error updating subscriber record", { error: updateError.message });
+      throw new Error(`Failed to update subscription in database: ${updateError.message}`);
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    logStep("Successfully updated subscription status in database", { 
+      cancelAtPeriodEnd: updatedSubscription.cancel_at_period_end,
+      subscriptionEnd
+    });
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      cancelAtPeriodEnd: updatedSubscription.cancel_at_period_end,
+      currentPeriodEnd: subscriptionEnd
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
