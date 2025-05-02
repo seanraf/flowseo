@@ -55,8 +55,13 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
     try {
       setLoading(true);
       
+      // Map selected plan to product ID
+      const productId = selectedPlan === 'limited' 
+        ? 'prod_SBvI46y2KqRMr2' 
+        : 'prod_SBvI4ATCgacOfn';
+      
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { plan: selectedPlan }
+        body: { plan: selectedPlan, productId }
       });
 
       if (error) throw error;

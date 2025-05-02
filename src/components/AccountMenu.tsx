@@ -9,13 +9,11 @@ import {
 import AuthenticatedMenu from '@/components/user/AuthenticatedMenu';
 import GuestMenu from '@/components/user/GuestMenu';
 import AvatarButton from '@/components/user/AvatarButton';
-import ProfileDialog from '@/components/user/ProfileDialog';
-import PasswordDialog from '@/components/user/PasswordDialog';
+import AccountSettingsDialog from '@/components/user/AccountSettingsDialog';
 
 const AccountMenu = () => {
   const { user, profile, signOut, subscriptionTier, checkSubscription, openCustomerPortal } = useAuth();
-  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
-  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [initials, setInitials] = useState('');
 
@@ -41,8 +39,8 @@ const AccountMenu = () => {
     return 'U';
   };
   
-  // Handle profile dialog close with proper refresh
-  const handleProfileSuccess = () => {
+  // Handle settings dialog close with proper refresh
+  const handleSettingsSuccess = () => {
     // Use setTimeout to avoid state update conflicts
     setTimeout(() => {
       checkSubscription().catch(error => {
@@ -72,8 +70,7 @@ const AccountMenu = () => {
             <AuthenticatedMenu 
               email={user.email || ''}
               subscriptionTier={subscriptionTier}
-              onProfileClick={() => setProfileDialogOpen(true)}
-              onPasswordClick={() => setPasswordDialogOpen(true)}
+              onSettingsClick={() => setSettingsDialogOpen(true)}
               onSignOut={signOut}
               setDropdownOpen={setDropdownOpen}
               openCustomerPortal={openCustomerPortal}
@@ -84,15 +81,10 @@ const AccountMenu = () => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ProfileDialog 
-        isOpen={profileDialogOpen}
-        onOpenChange={setProfileDialogOpen}
-        onSuccess={handleProfileSuccess}
-      />
-
-      <PasswordDialog
-        isOpen={passwordDialogOpen}
-        onOpenChange={setPasswordDialogOpen}
+      <AccountSettingsDialog 
+        isOpen={settingsDialogOpen}
+        onOpenChange={setSettingsDialogOpen}
+        onSuccess={handleSettingsSuccess}
       />
     </>
   );

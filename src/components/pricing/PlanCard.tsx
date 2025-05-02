@@ -12,6 +12,7 @@ interface PlanCardProps {
     available: boolean;
     note?: string;
   }>;
+  productId: string;
   popular?: boolean;
   onSubscribe: () => void;
 }
@@ -21,6 +22,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
   price,
   description,
   features,
+  productId,
   popular = false,
   onSubscribe,
 }) => {

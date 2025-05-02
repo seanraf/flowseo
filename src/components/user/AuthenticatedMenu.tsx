@@ -10,8 +10,7 @@ import {
 interface AuthenticatedMenuProps {
   email: string;
   subscriptionTier: string;
-  onProfileClick: () => void;
-  onPasswordClick: () => void;
+  onSettingsClick: () => void;
   onSignOut: () => Promise<void>;
   setDropdownOpen: React.Dispatch<React.SetStateAction<boolean>>;
   openCustomerPortal: () => Promise<void>;
@@ -20,8 +19,7 @@ interface AuthenticatedMenuProps {
 const AuthenticatedMenu: React.FC<AuthenticatedMenuProps> = ({
   email,
   subscriptionTier,
-  onProfileClick,
-  onPasswordClick,
+  onSettingsClick,
   onSignOut,
   setDropdownOpen,
   openCustomerPortal
@@ -48,17 +46,10 @@ const AuthenticatedMenu: React.FC<AuthenticatedMenuProps> = ({
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={() => {
         setDropdownOpen(false);
-        setTimeout(() => onProfileClick(), 100);
-      }}>
-        <User className="mr-2 h-4 w-4" />
-        <span>Display Initials</span>
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => {
-        setDropdownOpen(false);
-        setTimeout(() => onPasswordClick(), 100);
+        setTimeout(() => onSettingsClick(), 100);
       }}>
         <Settings className="mr-2 h-4 w-4" />
-        <span>Change Password</span>
+        <span>Account Settings</span>
       </DropdownMenuItem>
       <DropdownMenuItem onClick={handleManageSubscription}>
         <CreditCard className="mr-2 h-4 w-4" />

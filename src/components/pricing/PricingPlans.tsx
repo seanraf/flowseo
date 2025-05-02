@@ -41,6 +41,7 @@ const PricingPlans: React.FC<PricingPlansProps> = ({ user, onSignUp, onSelectPla
         price={20}
         description="For Freelancers & Small Businesses"
         features={limitedFeatures}
+        productId="prod_SBvI46y2KqRMr2"
         onSubscribe={() => onSelectPlan('limited')}
       />
       <PlanCard
@@ -48,6 +49,7 @@ const PricingPlans: React.FC<PricingPlansProps> = ({ user, onSignUp, onSelectPla
         price={99}
         description="For Agencies & Enterprises"
         features={unlimitedFeatures}
+        productId="prod_SBvI4ATCgacOfn"
         popular={true}
         onSubscribe={() => onSelectPlan('unlimited')}
       />
