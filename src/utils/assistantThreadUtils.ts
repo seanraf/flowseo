@@ -1,15 +1,16 @@
 
 import { createThread, runAssistantStream } from '@/services/langGraphService';
 import { useToast } from '@/components/ui/use-toast';
+import { ToastProps } from '@/components/ui/toast';
 
-/**
- * Creates a new thread or retrieves it from session storage
- */
+// Update the toast parameter type to accept just the toast function
 export const initializeAssistantThread = async (
   conversationId: string,
   setThreadId: React.Dispatch<React.SetStateAction<string | null>>,
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>,
-  toast: ReturnType<typeof useToast>
+  toast: {
+    toast: (props: ToastProps) => { id: string; dismiss: () => void; update: any }
+  }
 ) => {
   try {
     // Attempt to retrieve threadId from sessionStorage first
