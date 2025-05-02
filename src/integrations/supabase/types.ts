@@ -33,12 +33,33 @@ export type Database = {
         }
         Relationships: []
       }
+      temp_users: {
+        Row: {
+          created_at: string
+          id: string
+          tier: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          tier?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          tier?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      migrate_temp_user_to_profile: {
+        Args: { temp_user_id: string; user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       user_tier: "free" | "limited" | "unlimited"

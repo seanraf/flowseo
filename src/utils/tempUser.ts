@@ -10,7 +10,7 @@ interface TempUserResponse {
 export const createTempUser = async () => {
   try {
     const response = await supabase
-      .from('temp_users' as any)
+      .from('temp_users')
       .insert({ tier: 'free' })
       .select()
       .single();
@@ -35,7 +35,7 @@ export const createTempUser = async () => {
 export const fetchTempUser = async (tempUserId: string) => {
   try {
     const response = await supabase
-      .from('temp_users' as any)
+      .from('temp_users')
       .select('*')
       .eq('id', tempUserId)
       .single();
