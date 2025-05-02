@@ -22,6 +22,7 @@ const AccountMenu = () => {
   const { toast } = useToast();
   const [profileDialogOpen, setProfileDialogOpen] = React.useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = React.useState(false);
+  const [dropdownOpen, setDropdownOpen] = React.useState(false);
 
   const getInitials = () => {
     if (profile?.username) {
@@ -49,7 +50,7 @@ const AccountMenu = () => {
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
             <Avatar className="h-8 w-8">
@@ -69,11 +70,17 @@ const AccountMenu = () => {
             )}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setProfileDialogOpen(true)}>
+          <DropdownMenuItem onClick={() => {
+            setDropdownOpen(false);
+            setTimeout(() => setProfileDialogOpen(true), 100);
+          }}>
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setPasswordDialogOpen(true)}>
+          <DropdownMenuItem onClick={() => {
+            setDropdownOpen(false);
+            setTimeout(() => setPasswordDialogOpen(true), 100);
+          }}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Change Password</span>
           </DropdownMenuItem>
@@ -89,7 +96,12 @@ const AccountMenu = () => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+      <Dialog 
+        open={profileDialogOpen} 
+        onOpenChange={(open) => {
+          setProfileDialogOpen(open);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
@@ -98,7 +110,12 @@ const AccountMenu = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+      <Dialog 
+        open={passwordDialogOpen} 
+        onOpenChange={(open) => {
+          setPasswordDialogOpen(open);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Change Password</DialogTitle>
