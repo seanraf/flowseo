@@ -12,6 +12,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          display_initials: string | null
           email: string
           id: string
           tier: Database["public"]["Enums"]["user_tier"]
@@ -19,6 +20,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          display_initials?: string | null
           email: string
           id: string
           tier?: Database["public"]["Enums"]["user_tier"]
@@ -26,6 +28,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          display_initials?: string | null
           email?: string
           id?: string
           tier?: Database["public"]["Enums"]["user_tier"]

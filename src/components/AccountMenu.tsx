@@ -1,5 +1,3 @@
-
-// We need to update handleOpenCustomerPortal to handle the redirectToPricing response
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
