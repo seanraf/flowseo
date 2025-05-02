@@ -1,7 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -13,8 +13,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
-import { MessageSquarePlus, Plus, MessageSquare, Search, Trash2, Check, Edit } from 'lucide-react';
+import { Plus, MessageSquare, Search, Trash2, Check, Edit } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import Logo from '@/components/Logo';
 
 interface Conversation {
   id: string;
@@ -76,11 +77,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         isOpen ? 'translate-x-0' : '-translate-x-full'
       } md:translate-x-0`}
     >
-      <div className="flex h-16 items-center justify-between px-4 py-4">
-        <div className="flex items-center gap-2">
-          <MessageSquarePlus className="h-5 w-5 text-primary" />
-          <span className="text-lg font-medium">Projects</span>
-        </div>
+      <div className="flex h-16 items-center border-b border-border/50 px-4 py-4">
+        <Logo />
       </div>
       
       <div className="p-4">
@@ -92,8 +90,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           New Sandbox
         </Button>
       </div>
-      
-      <Separator className="mx-4 bg-border/50" />
       
       <div className="p-4">
         <div className="relative">

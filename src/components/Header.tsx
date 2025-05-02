@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Menu, Cloud, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import Logo from '@/components/Logo';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -23,14 +23,31 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, activeConversationTitle 
             onClick={toggleSidebar}
             className="md:hidden h-8 w-8 rounded-full"
           >
-            <Menu className="h-5 w-5" />
+            <span className="sr-only">Toggle Sidebar</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-5 w-5"
+            >
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
           </Button>
           
           <div className="flex items-center gap-2">
-            <Cloud className="h-5 w-5 text-primary" />
-            <span className="text-lg font-medium tracking-tight">
-              {activeConversationTitle || 'FlowSEO'}
-            </span>
+            {activeConversationTitle ? (
+              <span className="text-lg font-medium tracking-tight">
+                {activeConversationTitle}
+              </span>
+            ) : (
+              <Logo />
+            )}
           </div>
         </div>
 

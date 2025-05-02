@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,12 +17,13 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
   const [open, setOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'limited' | 'unlimited' | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, tempUser } = useAuth();
 
   const handleSubscribe = (plan: 'limited' | 'unlimited') => {
-    if (!user) {
+    if (!user && !tempUser) {
       navigate('/auth');
       return;
     }
@@ -31,26 +33,32 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
 
   const confirmSubscription = async () => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ tier: selectedPlan })
-        .eq('id', user?.id);
+      setLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { 
+          plan: selectedPlan,
+          tempUserId: tempUser?.id 
+        }
+      });
 
       if (error) throw error;
-
-      toast({
-        title: `Subscription Updated`,
-        description: `You are now on the ${selectedPlan} plan.`,
-      });
+      
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
     } catch (error: any) {
       toast({
         title: 'Error',
         description: error.message,
         variant: 'destructive',
       });
+      setLoading(false);
+    } finally {
+      setConfirmOpen(false);
     }
-    setConfirmOpen(false);
-    setOpen(false);
   };
 
   return (
@@ -70,8 +78,8 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
               {/* Limited Plan */}
-              <div className="rounded-xl border bg-card text-card-foreground shadow relative overflow-hidden">
-                <div className="flex flex-col p-6 space-y-4">
+              <div className="rounded-xl border bg-card text-card-foreground shadow relative overflow-hidden flex flex-col">
+                <div className="flex flex-col p-6 space-y-4 flex-1">
                   <h3 className="text-xl font-bold">Limited Plan</h3>
                   <div className="text-3xl font-bold">$20 <span className="text-sm font-normal text-muted-foreground">/month</span></div>
                   <p className="text-sm text-muted-foreground">For Freelancers & Small Businesses</p>
@@ -84,9 +92,11 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
                     <FeatureItem feature="CSV Export of Keyword Lists" available={true} />
                     <FeatureItem feature="Basic SEO Filtering & Competitor Analysis" available={true} />
                   </div>
-                  
+                </div>
+                
+                <div className="p-6 pt-0 mt-auto">
                   <Button 
-                    className="w-full mt-auto" 
+                    className="w-full" 
                     onClick={() => handleSubscribe('limited')}
                   >
                     Subscribe
@@ -95,11 +105,11 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
               </div>
               
               {/* Unlimited Plan */}
-              <div className="rounded-xl border bg-card text-card-foreground shadow relative overflow-hidden">
+              <div className="rounded-xl border bg-card text-card-foreground shadow relative overflow-hidden flex flex-col">
                 <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl">
                   POPULAR
                 </div>
-                <div className="flex flex-col p-6 space-y-4">
+                <div className="flex flex-col p-6 space-y-4 flex-1">
                   <h3 className="text-xl font-bold">Unlimited Plan</h3>
                   <div className="text-3xl font-bold">$99 <span className="text-sm font-normal text-muted-foreground">/month</span></div>
                   <p className="text-sm text-muted-foreground">For Agencies & Enterprises</p>
@@ -112,9 +122,11 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
                     <FeatureItem feature="Priority Support" available={true} />
                     <FeatureItem feature="CSV Export & CMS Integration" available={true} />
                   </div>
-                  
+                </div>
+                
+                <div className="p-6 pt-0 mt-auto">
                   <Button 
-                    className="w-full mt-auto" 
+                    className="w-full" 
                     variant="default"
                     onClick={() => handleSubscribe('unlimited')}
                   >
@@ -134,12 +146,21 @@ export const PricingModal: React.FC<PricingModalProps> = ({ children }) => {
             <AlertDialogTitle>Confirm Subscription</AlertDialogTitle>
             <AlertDialogDescription>
               You're about to subscribe to the {selectedPlan === 'limited' ? 'Limited ($20/month)' : 'Unlimited ($99/month)'} plan. 
-              In a real implementation, you would be redirected to Stripe to complete the payment.
+              You'll be redirected to Stripe to complete your payment.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmSubscription}>Continue</AlertDialogAction>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={loading} onClick={confirmSubscription}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                  Processing
+                </>
+              ) : (
+                'Continue to Checkout'
+              )}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

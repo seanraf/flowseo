@@ -3,11 +3,18 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 import { AuthForm } from '@/components/AuthForm';
 import { supabase } from '@/integrations/supabase/client';
+import Logo from '@/components/Logo';
 
 const Auth = () => {
   const navigate = useNavigate();
+
+  const handleBack = () => {
+    navigate('/');
+  };
 
   React.useEffect(() => {
     // Check if user is already logged in
@@ -19,10 +26,21 @@ const Auth = () => {
   }, [navigate]);
 
   return (
-    <div className="container flex items-center justify-center min-h-screen py-8">
+    <div className="container relative flex items-center justify-center min-h-screen py-8">
+      <Button 
+        variant="ghost" 
+        className="absolute left-4 top-4 p-0 h-10 w-10 rounded-full"
+        onClick={handleBack}
+      >
+        <ArrowLeft className="h-5 w-5" />
+      </Button>
+      
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Welcome to FlowSEO</CardTitle>
+          <div className="flex justify-center mb-4">
+            <Logo size="lg" />
+          </div>
+          <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
           <CardDescription>
             Sign in to your account or create a new one
           </CardDescription>
