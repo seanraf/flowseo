@@ -94,7 +94,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
       
-      <ScrollArea className="h-[calc(100vh-280px)]">
+      <ScrollArea className="h-[calc(100vh-300px)]">
         <div className="space-y-1 p-2">
           {filteredConversations.map((conversation) => (
             <div 
@@ -177,7 +177,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </ScrollArea>
       
-      <div className="absolute bottom-28 left-0 right-0 flex justify-center">
+      <div className="absolute bottom-40 left-0 right-0 flex justify-center">
         <Button 
           onClick={onNewConversation}
           variant="outline"
@@ -189,7 +189,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </Button>
       </div>
       
-      <div className="absolute bottom-0 left-0 w-full p-4 border-t border-border/50">
+      <div className="absolute bottom-0 left-0 w-full p-6 border-t border-border/50">
         <div className="flex justify-center">
           <AttributionLogo />
         </div>
