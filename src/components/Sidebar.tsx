@@ -176,7 +176,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </ScrollArea>
       
-      <div className="absolute bottom-[80px] left-0 right-0 flex justify-center">
+      <div className="absolute bottom-[90px] left-0 right-0 flex justify-center">
         <Button 
           onClick={onNewConversation}
           variant="outline"
@@ -188,7 +188,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </Button>
       </div>
       
-      <div className="absolute bottom-0 left-0 w-full h-[80px] border-t border-border/50 bg-gray-900">
+      <div className="absolute bottom-0 left-0 w-full h-[80px] border-t border-border/50 bg-gray-900 pt-2.5">
         <AttributionLogo />
       </div>
     </div>
