@@ -7,7 +7,7 @@ const AttributionLogo: React.FC = () => {
       href="http://www.33d.co/" 
       target="_blank" 
       rel="noopener noreferrer"
-      className="fixed bottom-4 left-4 flex items-center gap-2 bg-white dark:bg-gray-800 py-2 px-3 rounded-lg shadow-md hover:shadow-lg transition-all z-50"
+      className="fixed bottom-4 left-4 flex items-center gap-2 bg-white dark:bg-gray-800 py-2 px-3 rounded-lg shadow-md hover:shadow-lg transition-all"
     >
       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
         Presented by
