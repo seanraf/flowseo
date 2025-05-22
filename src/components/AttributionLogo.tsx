@@ -7,12 +7,12 @@ const AttributionLogo: React.FC = () => {
       href="http://www.33d.co/" 
       target="_blank" 
       rel="noopener noreferrer"
-      className="flex items-center gap-3 bg-gray-900 dark:bg-gray-800 py-3 px-4 rounded-lg w-full"
+      className="flex flex-col items-center justify-center w-full h-full"
     >
-      <span className="text-sm font-medium text-gray-300 dark:text-gray-300">
+      <span className="text-sm font-medium text-gray-300 mb-2">
         Presented by
       </span>
-      <div className="h-9">
+      <div className="h-12">
         <img 
           src="/lovable-uploads/b77a1fa3-c631-4a56-9883-08d80d5ec0eb.png" 
           alt="33 Digital Logo" 

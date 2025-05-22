@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -76,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     <div 
       className={`fixed inset-y-0 left-0 z-20 w-[280px] border-r border-border/50 bg-sidebar transition-transform duration-300 ease-in-out ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
-      } md:translate-x-0`}
+      } md:translate-x-0 flex flex-col`}
     >
       <div className="flex h-16 items-center border-b border-border/50 px-4 py-4">
         <Logo />
@@ -94,7 +93,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
       
-      <ScrollArea className="h-[calc(100vh-300px)]">
+      <ScrollArea className="flex-1 mb-[160px]">
         <div className="space-y-1 p-2">
           {filteredConversations.map((conversation) => (
             <div 
@@ -177,7 +176,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </ScrollArea>
       
-      <div className="absolute bottom-40 left-0 right-0 flex justify-center">
+      <div className="absolute bottom-[80px] left-0 right-0 flex justify-center">
         <Button 
           onClick={onNewConversation}
           variant="outline"
@@ -189,10 +188,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         </Button>
       </div>
       
-      <div className="absolute bottom-0 left-0 w-full p-6 border-t border-border/50">
-        <div className="flex justify-center">
-          <AttributionLogo />
-        </div>
+      <div className="absolute bottom-0 left-0 w-full h-[80px] border-t border-border/50 bg-gray-900">
+        <AttributionLogo />
       </div>
     </div>
   );
