@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./AppRoutes";
+import AttributionLogo from "./components/AttributionLogo";
 
 const queryClient = new QueryClient();
 
@@ -15,6 +16,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <AppRoutes />
+        <AttributionLogo />
       </TooltipProvider>
     </BrowserRouter>
   </QueryClientProvider>
