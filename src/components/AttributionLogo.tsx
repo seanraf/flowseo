@@ -12,7 +12,7 @@ const AttributionLogo: React.FC = () => {
       <span className="text-sm font-medium text-gray-300 mr-3">
         Presented by
       </span>
-      <div className="h-10">
+      <div className="h-14">
         <img 
           src="/lovable-uploads/b77a1fa3-c631-4a56-9883-08d80d5ec0eb.png" 
           alt="33 Digital Logo" 

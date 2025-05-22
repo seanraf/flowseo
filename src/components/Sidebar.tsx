@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -176,7 +177,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </ScrollArea>
       
-      <div className="absolute bottom-[90px] left-0 right-0 flex justify-center">
+      <div className="absolute bottom-[110px] left-0 right-0 flex justify-center">
         <Button 
           onClick={onNewConversation}
           variant="outline"
