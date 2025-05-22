@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { ExternalLink } from 'lucide-react';
 
 const AttributionLogo: React.FC = () => {
   return (
@@ -8,7 +7,7 @@ const AttributionLogo: React.FC = () => {
       href="http://www.33d.co/" 
       target="_blank" 
       rel="noopener noreferrer"
-      className="fixed bottom-4 left-4 flex items-center gap-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm py-2 px-3 rounded-lg shadow-md hover:shadow-lg transition-all z-50"
+      className="fixed bottom-4 left-4 flex items-center gap-2 bg-white dark:bg-gray-800 py-2 px-3 rounded-lg shadow-md hover:shadow-lg transition-all z-50"
     >
       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
         Presented by
@@ -20,7 +19,6 @@ const AttributionLogo: React.FC = () => {
           className="h-full"
         />
       </div>
-      <ExternalLink className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
     </a>
   );
 };
