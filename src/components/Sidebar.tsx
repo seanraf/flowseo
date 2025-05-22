@@ -176,7 +176,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </ScrollArea>
       
-      <div className="absolute bottom-5 left-0 right-0 flex justify-center">
+      <div className="absolute bottom-20 left-0 right-0 flex justify-center">
         <Button 
           onClick={onNewConversation}
           variant="outline"
@@ -186,6 +186,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           <Plus className="h-5 w-5" />
           <span className="sr-only">New Sandbox</span>
         </Button>
+      </div>
+      
+      <div className="absolute bottom-0 left-0 w-full py-4 px-4 border-t border-border/50">
+        {/* Empty footer div for spacing */}
       </div>
     </div>
   );
