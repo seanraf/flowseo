@@ -16,6 +16,7 @@ import {
 import { Plus, MessageSquare, Search, Trash2, Check, Edit } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import Logo from '@/components/Logo';
+import AttributionLogo from '@/components/AttributionLogo';
 
 interface Conversation {
   id: string;
@@ -93,7 +94,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
       
-      <ScrollArea className="h-[calc(100vh-180px)]">
+      <ScrollArea className="h-[calc(100vh-280px)]">
         <div className="space-y-1 p-2">
           {filteredConversations.map((conversation) => (
             <div 
@@ -176,7 +177,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </ScrollArea>
       
-      <div className="absolute bottom-20 left-0 right-0 flex justify-center">
+      <div className="absolute bottom-28 left-0 right-0 flex justify-center">
         <Button 
           onClick={onNewConversation}
           variant="outline"
@@ -188,8 +189,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         </Button>
       </div>
       
-      <div className="absolute bottom-0 left-0 w-full py-4 px-4 border-t border-border/50">
-        {/* Empty footer div for spacing */}
+      <div className="absolute bottom-0 left-0 w-full p-4 border-t border-border/50">
+        <div className="flex justify-center">
+          <AttributionLogo />
+        </div>
       </div>
     </div>
   );
